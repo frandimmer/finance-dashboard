@@ -51,11 +51,12 @@ async function getChartData(userId: string) {
         month: date.toLocaleString("es-AR", { month: "short" }),
         income,
         expenses,
+        hasData: transactions.length > 0,
       }
     })
   )
 
-  return data
+  return data.filter((d) => d.hasData)
 }
 
 export default async function DashboardPage() {
@@ -112,15 +113,26 @@ export default async function DashboardPage() {
       </div>
 
       <Card className="bg-white border border-gray-200 shadow-none">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-gray-500">
-            Últimos 6 meses
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ExpensesChart data={chartData} />
-        </CardContent>
-      </Card>
+  <CardHeader>
+    <CardTitle className="text-sm font-medium text-gray-500">
+      Últimos 6 meses
+    </CardTitle>
+  </CardHeader>
+  <CardContent>
+    {chartData.length === 0 ? (
+      <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+        <p className="text-gray-400 text-sm">
+          Todavía no hay datos suficientes para mostrar el gráfico.
+        </p>
+        <p className="text-gray-300 text-xs">
+          Registrá tus primeras transacciones para verlo aparecer.
+        </p>
+      </div>
+    ) : (
+      <ExpensesChart data={chartData} />
+    )}
+  </CardContent>
+</Card>
     </div>
   )
 }

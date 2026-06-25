@@ -14,9 +14,19 @@ async function getTransactions(userId: string) {
   });
 }
 
+async function getCategories(userId: string) {
+  return prisma.category.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  })
+}
+
 export default async function TransactionsPage() {
-  const session = await auth();
-  const transactions = await getTransactions(session!.user!.id!);
+  const session = await auth()
+  const [transactions, categories] = await Promise.all([
+    getTransactions(session!.user!.id!),
+    getCategories(session!.user!.id!),
+  ])
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,7 +39,7 @@ export default async function TransactionsPage() {
             Registrá tus ingresos y gastos
           </p>
         </div>
-        <TransactionForm userId={session!.user!.id!} />
+        <TransactionForm userId={session!.user!.id!} categories={categories} />
       </div>
 
       <Card className="bg-white border border-gray-200 shadow-none">

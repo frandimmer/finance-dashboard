@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,11 +14,18 @@ import {
 } from "@/components/ui/sheet"
 import { Plus } from "lucide-react"
 
-interface Props {
-  userId: string
+interface Category {
+  id: string
+  name: string
+  icon: string | null
 }
 
-export function TransactionForm({ userId }: Props) {
+interface Props {
+  userId: string
+  categories: Category[]
+}
+
+export function TransactionForm({ userId, categories }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -26,6 +34,7 @@ export function TransactionForm({ userId }: Props) {
     amount: "",
     type: "expense",
     date: new Date().toISOString().split("T")[0],
+    categoryId: "",
   })
 
   async function handleSubmit() {
@@ -35,12 +44,23 @@ export function TransactionForm({ userId }: Props) {
     await fetch("/api/transactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, amount: Number(form.amount), userId }),
+      body: JSON.stringify({
+        ...form,
+        amount: Number(form.amount),
+        userId,
+        categoryId: form.categoryId || null,
+      }),
     })
 
     setLoading(false)
     setOpen(false)
-    setForm({ description: "", amount: "", type: "expense", date: new Date().toISOString().split("T")[0] })
+    setForm({
+      description: "",
+      amount: "",
+      type: "expense",
+      date: new Date().toISOString().split("T")[0],
+      categoryId: "",
+    })
     router.refresh()
   }
 
@@ -94,6 +114,44 @@ export function TransactionForm({ userId }: Props) {
             value={form.date}
             onChange={(e) => setForm({ ...form, date: e.target.value })}
           />
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-gray-500">Categoría (opcional)</span>
+            {categories.length === 0 ? (
+              <p className="text-xs text-gray-400">
+                No tenés categorías creadas.{" "}
+                <Link
+                  href="/dashboard/categories"
+                  className="text-blue-500 hover:underline"
+                >
+                  Creá una acá
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        categoryId: form.categoryId === cat.id ? "" : cat.id,
+                      })
+                    }
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
+                      form.categoryId === cat.id
+                        ? "bg-blue-50 border-blue-300 text-blue-700"
+                        : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {cat.icon && <span>{cat.icon}</span>}
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <Button onClick={handleSubmit} disabled={loading} className="w-full">
             {loading ? "Guardando..." : "Guardar"}

@@ -6,20 +6,17 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { description, amount, type, date, categoryId } = await req.json()
+  const { name, icon } = await req.json()
 
-  const transaction = await prisma.transaction.create({
+  const category = await prisma.category.create({
     data: {
-      description,
-      amount,
-      type,
-      date: new Date(date),
+      name,
+      icon,
       userId: session.user!.id!,
-      categoryId: categoryId ?? null,
     },
   })
 
-  return NextResponse.json(transaction)
+  return NextResponse.json(category)
 }
 
 export async function DELETE(req: Request) {
@@ -28,7 +25,7 @@ export async function DELETE(req: Request) {
 
   const { id } = await req.json()
 
-  await prisma.transaction.delete({
+  await prisma.category.delete({
     where: { id, userId: session.user!.id! },
   })
 

@@ -7,18 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
+enum Currency {
+  ARS
+  USD
+}
 
-  accounts      Account[]
-  sessions      Session[]
-  transactions  Transaction[]
-  categories    Category[]
+model User {
+  id                String    @id @default(cuid())
+  name              String?
+  email             String    @unique
+  emailVerified     DateTime?
+  image             String?
+  createdAt         DateTime  @default(now())
+  preferredCurrency Currency @default(ARS)
+
+  accounts          Account[]
+  sessions          Session[]
+  transactions      Transaction[]
+  categories        Category[]
 }
 
 model Account {
@@ -64,7 +70,8 @@ model Transaction {
   id          String   @id @default(cuid())
   amount      Float
   description String?
-  type        String   // "income" o "expense"
+  type        String
+  currency    String   @default("ARS")
   date        DateTime @default(now())
   userId      String
   categoryId  String?

@@ -1,47 +1,92 @@
 "use client"
 
 import {
+  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts"
 
-interface Props {
-  data: { month: string; expenses: number; income: number }[]
+type Props = {
+  data: {
+    month: string
+    income: number
+    expenses: number
+  }[]
+  currency: "ARS" | "USD"
 }
 
-export function ExpensesChart({ data }: Props) {
+export function ExpensesChart({ data, currency }: Props) {
+  const symbol = currency === "USD" ? "US$" : "$"
+
   return (
-    <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis
-          dataKey="month"
-          tick={{ fontSize: 12, fill: "#6b7280" }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
-          tick={{ fontSize: 12, fill: "#6b7280" }}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(v) => `$${v.toLocaleString("es-AR")}`}
-        />
-        <Tooltip
-          formatter={(value: number) => `$${value.toLocaleString("es-AR")}`}
-          contentStyle={{
-            border: "1px solid #e5e7eb",
-            borderRadius: "8px",
-            fontSize: "12px",
-          }}
-        />
-        <Bar dataKey="income" name="Ingresos" fill="#16a34a" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="expenses" name="Gastos" fill="#dc2626" radius={[4, 4, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="w-full h-[340px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          margin={{ top: 10, right: 20, left: 60, bottom: 10 }}
+          barGap={6}
+        >
+
+          {/* GRID MÁS SUAVE */}
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#e5e7eb"
+            opacity={0.6}
+          />
+
+          {/* X AXIS */}
+          <XAxis
+            dataKey="month"
+            tick={{ fontSize: 12, fill: "#6b7280" }}
+            axisLine={false}
+            tickLine={false}
+          />
+
+          {/* Y AXIS (FIX ESPACIO + FORMATO MONEDA) */}
+          <YAxis
+            width={90}
+            tick={{ fontSize: 12, fill: "#6b7280" }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(value) =>
+              `${symbol} ${value.toLocaleString("es-AR", {
+                maximumFractionDigits: 0,
+              })}`
+            }
+          />
+
+          {/* TOOLTIP PRO */}
+          <Tooltip
+            cursor={{ fill: "rgba(0,0,0,0.04)" }}
+            formatter={(value: number) => [
+              `${symbol} ${value.toLocaleString("es-AR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`,
+            ]}
+            labelStyle={{ color: "#374151" }}
+          />
+
+          {/* BARRAS MÁS SOFT */}
+          <Bar
+            dataKey="income"
+            fill="#10b981"
+            radius={[6, 6, 0, 0]}
+            opacity={0.85}
+          />
+
+          <Bar
+            dataKey="expenses"
+            fill="#ef4444"
+            radius={[6, 6, 0, 0]}
+            opacity={0.85}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   )
 }

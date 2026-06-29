@@ -1,3 +1,4 @@
+import Link from "next/link"
 import {
   Sidebar,
   SidebarContent,
@@ -20,8 +21,16 @@ import { signOut } from "@/lib/auth"
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Transacciones", url: "/dashboard/transactions", icon: ArrowLeftRight },
-  { title: "Categorías", url: "/dashboard/categories", icon: Tag },
+  {
+    title: "Transacciones",
+    url: "/dashboard/transactions",
+    icon: ArrowLeftRight,
+  },
+  {
+    title: "Categorías",
+    url: "/dashboard/categories",
+    icon: Tag,
+  },
 ]
 
 interface AppSidebarProps {
@@ -29,6 +38,7 @@ interface AppSidebarProps {
     name?: string | null
     email?: string | null
     image?: string | null
+    preferredCurrency: "ARS" | "USD"
   }
 }
 
@@ -40,7 +50,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
           <div className="w-7 h-7 rounded-md bg-emerald-500 flex items-center justify-center">
             <span className="text-white text-xs font-bold">F</span>
           </div>
-          <span className="font-semibold text-sm">Finance Dashboard</span>
+          <span className="font-semibold text-sm">
+            Finance Dashboard
+          </span>
         </div>
       </SidebarHeader>
 
@@ -48,17 +60,17 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center gap-2">
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+  {navItems.map((item) => (
+    <SidebarMenuItem key={item.title}>
+      <Link href={item.url}>
+        <SidebarMenuButton>
+          <item.icon className="w-4 h-4" />
+          <span>{item.title}</span>
+        </SidebarMenuButton>
+      </Link>
+    </SidebarMenuItem>
+  ))}
+</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
@@ -67,14 +79,20 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="w-8 h-8">
             <AvatarImage src={user.image ?? ""} />
-            <AvatarFallback>{user.name?.[0] ?? "U"}</AvatarFallback>
+            <AvatarFallback>
+              {user.name?.[0] ?? "U"}
+            </AvatarFallback>
           </Avatar>
+
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-medium truncate">{user.name}</span>
-            <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+            <span className="text-sm font-medium truncate">
+              {user.name}
+            </span>
+            <span className="text-xs text-muted-foreground truncate">
+              {user.email}
+            </span>
           </div>
         </div>
-
         <form
           action={async () => {
             "use server"

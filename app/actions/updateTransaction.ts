@@ -3,29 +3,34 @@
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
-interface UpdateTransactionInput {
+interface Props {
   id: string
   amount: number
-  description?: string
+  description: string
   type: string
-  categoryId?: string
+  categoryId: string | null
+  date: string
 }
 
-export async function updateTransaction(
-  data: UpdateTransactionInput
-) {
+export async function updateTransaction({
+  id,
+  amount,
+  description,
+  type,
+  categoryId,
+  date,
+}: Props) {
   await prisma.transaction.update({
-    where: {
-      id: data.id,
-    },
+    where: { id },
     data: {
-      amount: data.amount,
-      description: data.description,
-      type: data.type,
-      categoryId: data.categoryId || null,
+      amount,
+      description,
+      type,
+      categoryId,
+      date: new Date(`${date}T12:00:00`),
     },
   })
 
-  revalidatePath("/dashboard/transactions")
   revalidatePath("/dashboard")
+  revalidatePath("/dashboard/transactions")
 }

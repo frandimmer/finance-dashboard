@@ -1,17 +1,18 @@
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { TransactionForm } from "@/components/dashboard/transaction-form"
-import { DeleteTransaction } from "@/components/dashboard/delete-transaction"
-import { TransactionFilters } from "@/components/dashboard/transaction-filters"
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { TransactionForm } from "@/components/dashboard/transaction-form";
+import { DeleteTransaction } from "@/components/dashboard/delete-transaction";
+import { TransactionFilters } from "@/components/dashboard/transaction-filters";
+import { EditTransaction } from "@/components/dashboard/edit-transaction";
 
 async function getTransactions(
   userId: string,
   search?: string,
   type?: string,
   category?: string,
-  order?: "asc" | "desc"
+  order?: "asc" | "desc",
 ) {
   return prisma.transaction.findMany({
     where: {
@@ -22,12 +23,14 @@ async function getTransactions(
           mode: "insensitive",
         },
       }),
-      ...(type && type !== "all" && {
-        type,
-      }),
-      ...(category && category !== "all" && {
-        categoryId: category,
-      }),
+      ...(type &&
+        type !== "all" && {
+          type,
+        }),
+      ...(category &&
+        category !== "all" && {
+          categoryId: category,
+        }),
     },
     include: {
       category: true,
@@ -36,30 +39,28 @@ async function getTransactions(
       date: order ?? "desc",
     },
     take: 50,
-  })
+  });
 }
 
 async function getCategories(userId: string) {
   return prisma.category.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-  })
+  });
 }
 
 interface Props {
   searchParams: Promise<{
-    search?: string
-    type?: string
-    category?: string
-    order?: "asc" | "desc"
-  }>
+    search?: string;
+    type?: string;
+    category?: string;
+    order?: "asc" | "desc";
+  }>;
 }
 
-export default async function TransactionsPage({
-  searchParams,
-}: Props) {
-  const session = await auth()
-  const params = await searchParams
+export default async function TransactionsPage({ searchParams }: Props) {
+  const session = await auth();
+  const params = await searchParams;
 
   const [transactions, categories] = await Promise.all([
     getTransactions(
@@ -67,16 +68,14 @@ export default async function TransactionsPage({
       params.search,
       params.type,
       params.category,
-      params.order
+      params.order,
     ),
     getCategories(session!.user!.id!),
-  ])
+  ]);
 
   const totalFiltered = transactions.reduce((sum, t) => {
-    return t.type === "income"
-      ? sum + t.amount
-      : sum - t.amount
-  }, 0)
+    return t.type === "income" ? sum + t.amount : sum - t.amount;
+  }, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,10 +90,7 @@ export default async function TransactionsPage({
           </p>
         </div>
 
-        <TransactionForm
-          userId={session!.user!.id!}
-          categories={categories}
-        />
+        <TransactionForm userId={session!.user!.id!} categories={categories} />
       </div>
 
       {/* FILTERS */}
@@ -104,15 +100,11 @@ export default async function TransactionsPage({
       <Card className="bg-white border border-gray-200 shadow-none">
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">
-              Balance filtrado
-            </span>
+            <span className="text-sm text-gray-500">Balance filtrado</span>
 
             <span
               className={`text-lg font-semibold ${
-                totalFiltered >= 0
-                  ? "text-emerald-600"
-                  : "text-red-600"
+                totalFiltered >= 0 ? "text-emerald-600" : "text-red-600"
               }`}
             >
               {totalFiltered >= 0 ? "+" : "-"}$
@@ -166,6 +158,8 @@ export default async function TransactionsPage({
                       {t.amount.toLocaleString("es-AR")}
                     </Badge>
 
+                    <EditTransaction transaction={t} categories={categories} />
+
                     <DeleteTransaction id={t.id} />
                   </div>
                 </div>
@@ -175,5 +169,5 @@ export default async function TransactionsPage({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

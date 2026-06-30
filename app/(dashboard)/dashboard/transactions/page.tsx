@@ -120,6 +120,14 @@ export default async function TransactionsPage({ searchParams }: Props) {
     getCategories(session!.user!.id!),
   ]);
 
+  const hasActiveFilters = Boolean(
+    params.search ||
+      params.type ||
+      params.category ||
+      params.month ||
+      params.year
+  );
+
   const totalIncome = transactions
     .filter((transaction) => transaction.type === "income")
     .reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -213,9 +221,23 @@ export default async function TransactionsPage({ searchParams }: Props) {
 
         <CardContent>
           {transactions.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">
-              No hay transacciones
-            </p>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-14 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white border border-gray-200">
+                <span className="text-lg text-gray-400">—</span>
+              </div>
+
+              <h3 className="text-sm font-semibold text-gray-900">
+                {hasActiveFilters
+                  ? "No encontré movimientos con esos filtros"
+                  : "Todavía no registraste movimientos"}
+              </h3>
+
+              <p className="mt-2 max-w-sm text-sm text-gray-500">
+                {hasActiveFilters
+                  ? "Probá ajustar la búsqueda, cambiar el mes, revisar la categoría o limpiar los filtros aplicados."
+                  : "Creá tu primera transacción para empezar a ver tu actividad financiera organizada."}
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col">
               {Object.entries(
@@ -270,14 +292,22 @@ export default async function TransactionsPage({ searchParams }: Props) {
                             key={transaction.id}
                             className="flex items-center justify-between py-4"
                           >
-                            <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-2">
                               <span className="text-sm font-medium text-gray-900">
                                 {transaction.description || "Sin descripción"}
                               </span>
 
-                              <span className="text-xs text-gray-400">
-                                {transaction.category?.name || "Sin categoría"}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {transaction.category ? (
+                                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-400">
+                                    <span>{transaction.category.name}</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-400">
+                                    Sin categoría
+                                  </span>
+                                )}
+                              </div>
 
                               <span className="text-xs text-gray-400">
                                 Balance:{" "}

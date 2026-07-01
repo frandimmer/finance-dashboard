@@ -158,7 +158,7 @@ export default async function TransactionsPage({ searchParams }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
             Transacciones
@@ -175,7 +175,7 @@ export default async function TransactionsPage({ searchParams }: Props) {
 
       <Card className="bg-white border border-gray-200 shadow-none">
         <CardContent className="py-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>
               <p className="text-xs text-gray-400 mb-1">Ingresos</p>
               <p className="text-sm font-semibold text-emerald-600">
@@ -275,14 +275,14 @@ export default async function TransactionsPage({ searchParams }: Props) {
                 }
 
                 return (
-                  <div key={date}>
+                  <div key={date} className="space-y-3">
                     <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-gray-100 px-1 py-3">
                       <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                         {label}
                       </span>
                     </div>
 
-                    <div className="flex flex-col divide-y divide-gray-100">
+                    <div className="flex flex-col gap-2">
                       {transactionsByDate.map((transaction) => {
                         const balanceAfter =
                           balanceMap.get(transaction.id) ?? 0;
@@ -290,61 +290,118 @@ export default async function TransactionsPage({ searchParams }: Props) {
                         return (
                           <div
                             key={transaction.id}
-                            className="flex items-center justify-between py-4"
+                            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50/70 sm:px-4"
                           >
-                            <div className="flex flex-col gap-2">
-                              <span className="text-sm font-medium text-gray-900">
-                                {transaction.description || "Sin descripción"}
-                              </span>
+                            <div className="hidden sm:flex sm:items-center sm:justify-between">
+                              <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {transaction.description || "Sin descripción"}
+                                </span>
 
-                              <div className="flex items-center gap-2">
-                                {transaction.category ? (
+                                <div className="flex items-center gap-2">
                                   <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-400">
-                                    <span>{transaction.category.name}</span>
+                                    {transaction.category?.name ||
+                                      "Sin categoría"}
                                   </span>
-                                ) : (
-                                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-400">
-                                    Sin categoría
+                                </div>
+
+                                <span className="text-xs text-gray-400">
+                                  Balance:{" "}
+                                  <span
+                                    className={
+                                      balanceAfter >= 0
+                                        ? "text-emerald-500"
+                                        : "text-red-500"
+                                    }
+                                  >
+                                    {balanceAfter >= 0 ? "+" : "-"}$
+                                    {Math.abs(balanceAfter).toLocaleString(
+                                      "es-AR"
+                                    )}
                                   </span>
-                                )}
+                                </span>
                               </div>
 
-                              <span className="text-xs text-gray-400">
-                                Balance:{" "}
-                                <span
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="outline"
                                   className={
-                                    balanceAfter >= 0
-                                      ? "text-emerald-500"
-                                      : "text-red-500"
+                                    transaction.type === "income"
+                                      ? "text-emerald-600 border-emerald-200 bg-emerald-50"
+                                      : "text-red-600 border-red-200 bg-red-50"
                                   }
                                 >
-                                  {balanceAfter >= 0 ? "+" : "-"}$
-                                  {Math.abs(balanceAfter).toLocaleString(
-                                    "es-AR"
-                                  )}
-                                </span>
-                              </span>
+                                  {transaction.type === "income" ? "+" : "-"}$
+                                  {transaction.amount.toLocaleString("es-AR")}
+                                </Badge>
+
+                                <EditTransaction
+                                  transaction={transaction}
+                                  categories={categories}
+                                />
+
+                                <DeleteTransaction id={transaction.id} />
+                              </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className={
-                                  transaction.type === "income"
-                                    ? "text-emerald-600 border-emerald-200 bg-emerald-50"
-                                    : "text-red-600 border-red-200 bg-red-50"
-                                }
-                              >
-                                {transaction.type === "income" ? "+" : "-"}$
-                                {transaction.amount.toLocaleString("es-AR")}
-                              </Badge>
+                            <div className="flex flex-col gap-3 sm:hidden">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium text-gray-900">
+                                    {transaction.description ||
+                                      "Sin descripción"}
+                                  </p>
 
-                              <EditTransaction
-                                transaction={transaction}
-                                categories={categories}
-                              />
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <span className="inline-flex w-fit items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-400">
+                                      {transaction.category?.name ||
+                                        "Sin categoría"}
+                                    </span>
+                                  </div>
+                                </div>
 
-                              <DeleteTransaction id={transaction.id} />
+                                <div className="shrink-0 text-right">
+                                  <p
+                                    className={`text-sm font-semibold ${
+                                      transaction.type === "income"
+                                        ? "text-emerald-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    {transaction.type === "income" ? "+" : "-"}$
+                                    {transaction.amount.toLocaleString(
+                                      "es-AR"
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+                                <span className="text-xs text-gray-400">
+                                  Balance:{" "}
+                                  <span
+                                    className={
+                                      balanceAfter >= 0
+                                        ? "text-emerald-500"
+                                        : "text-red-500"
+                                    }
+                                  >
+                                    {balanceAfter >= 0 ? "+" : "-"}$
+                                    {Math.abs(balanceAfter).toLocaleString(
+                                      "es-AR"
+                                    )}
+                                  </span>
+                                </span>
+
+                                <div className="flex items-center gap-1.5">
+                                  <EditTransaction
+                                    transaction={transaction}
+                                    categories={categories}
+                                  />
+
+                                  <DeleteTransaction id={transaction.id} />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         );

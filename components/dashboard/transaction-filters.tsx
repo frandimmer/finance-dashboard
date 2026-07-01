@@ -2,28 +2,20 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Props {
   categories: {
     id: string;
     name: string;
   }[];
-}
-
-function SelectWrapper({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`relative ${className}`}>
-      {children}
-      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-    </div>
-  );
 }
 
 function FilterField({
@@ -40,6 +32,46 @@ function FilterField({
       <span className="text-xs font-medium text-gray-400">{label}</span>
       {children}
     </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  options: {
+    value: string;
+    label: string;
+  }[];
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-11 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 [&>span]:truncate">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+
+      <SelectContent
+        position="popper"
+        align="start"
+        sideOffset={2}
+        className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] rounded-xl border-gray-200 bg-white shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
+      >
+        {options.map((option) => (
+          <SelectItem
+            key={option.value}
+            value={option.value}
+            className="cursor-pointer rounded-lg text-sm"
+          >
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -82,6 +114,7 @@ export function TransactionFilters({ categories }: Props) {
 
   const searchValueFromUrl = searchParams.get("search") || "";
   const [search, setSearch] = useState(searchValueFromUrl);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const yearOptions = useMemo(() => getYearOptions(), []);
 
@@ -91,13 +124,34 @@ export function TransactionFilters({ categories }: Props) {
   const yearValue = searchParams.get("year") || "all";
   const orderValue = searchParams.get("order") || "desc";
 
-  const hasActiveFilters = Boolean(
-    searchParams.get("search") ||
-      searchParams.get("type") ||
-      searchParams.get("category") ||
-      searchParams.get("month") ||
-      searchParams.get("year")
-  );
+  const typeOptions = [
+    { value: "all", label: "Todos" },
+    { value: "income", label: "Ingresos" },
+    { value: "expense", label: "Gastos" },
+  ];
+
+  const categoryOptions = [
+    { value: "all", label: "Todas" },
+    ...categories.map((category) => ({
+      value: category.id,
+      label: category.name,
+    })),
+  ];
+
+  const orderOptions = [
+    { value: "desc", label: "Recientes" },
+    { value: "asc", label: "Antiguas" },
+  ];
+
+  const activeFiltersCount = [
+    searchParams.get("search"),
+    searchParams.get("type"),
+    searchParams.get("category"),
+    searchParams.get("month"),
+    searchParams.get("year"),
+  ].filter(Boolean).length;
+
+  const hasActiveFilters = activeFiltersCount > 0;
 
   function buildUrl(params: URLSearchParams) {
     const query = params.toString();
@@ -147,18 +201,65 @@ export function TransactionFilters({ categories }: Props) {
 
   function clearFilters() {
     setSearch("");
+    setMobileFiltersOpen(false);
     router.push("/dashboard/transactions");
   }
 
   const inputClass =
-    "h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm outline-none transition-all hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100";
+    "h-11 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm outline-none transition-all hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100";
 
-  const selectClass =
-    "appearance-none h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pr-11 text-sm font-medium text-gray-700 shadow-sm outline-none transition-all hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100";
+  const filtersContent = (
+    <>
+      <FilterField label="Tipo">
+        <FilterSelect
+          value={typeValue}
+          onChange={(value) => updateParam("type", value)}
+          placeholder="Todos"
+          options={typeOptions}
+        />
+      </FilterField>
+
+      <FilterField label="Categoría">
+        <FilterSelect
+          value={categoryValue}
+          onChange={(value) => updateParam("category", value)}
+          placeholder="Todas"
+          options={categoryOptions}
+        />
+      </FilterField>
+
+      <FilterField label="Mes">
+        <FilterSelect
+          value={monthValue}
+          onChange={(value) => updateParam("month", value)}
+          placeholder="Todos"
+          options={months}
+        />
+      </FilterField>
+
+      <FilterField label="Año">
+        <FilterSelect
+          value={yearValue}
+          onChange={(value) => updateParam("year", value)}
+          placeholder="Todos"
+          options={yearOptions}
+        />
+      </FilterField>
+
+      <FilterField label="Orden">
+        <FilterSelect
+          value={orderValue}
+          onChange={(value) => updateParam("order", value)}
+          placeholder="Recientes"
+          options={orderOptions}
+        />
+      </FilterField>
+    </>
+  );
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+      <div className="hidden md:grid md:grid-cols-6 gap-3">
         <FilterField label="Buscar">
           <input
             value={search}
@@ -168,82 +269,54 @@ export function TransactionFilters({ categories }: Props) {
           />
         </FilterField>
 
-        <FilterField label="Tipo">
-          <SelectWrapper>
-            <select
-              value={typeValue}
-              onChange={(event) => updateParam("type", event.target.value)}
-              className={selectClass}
-            >
-              <option value="all">Todos</option>
-              <option value="income">Ingresos</option>
-              <option value="expense">Gastos</option>
-            </select>
-          </SelectWrapper>
+        {filtersContent}
+      </div>
+
+      <div className="flex flex-col gap-3 md:hidden">
+        <FilterField label="Buscar">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar..."
+            className={inputClass}
+          />
         </FilterField>
 
-        <FilterField label="Categoría">
-          <SelectWrapper>
-            <select
-              value={categoryValue}
-              onChange={(event) => updateParam("category", event.target.value)}
-              className={selectClass}
-            >
-              <option value="all">Todas</option>
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen((open) => !open)}
+          className="flex h-11 min-h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-colors duration-200 hover:bg-gray-50"
+        >
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4 text-gray-400" />
+            Filtros
+            {activeFiltersCount > 0 && (
+              <span className="rounded-full bg-gray-900 px-2 py-0.5 text-xs font-semibold text-white">
+                {activeFiltersCount}
+              </span>
+            )}
+          </span>
+        </button>
 
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </SelectWrapper>
-        </FilterField>
-
-        <FilterField label="Mes">
-          <SelectWrapper>
-            <select
-              value={monthValue}
-              onChange={(event) => updateParam("month", event.target.value)}
-              className={selectClass}
+        <div
+          className={`grid transition-all duration-300 ease-out ${
+            mobileFiltersOpen
+              ? "grid-rows-[1fr] opacity-100"
+              : "grid-rows-[0fr] opacity-0"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div
+              className={`grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-transform duration-300 ease-out ${
+                mobileFiltersOpen
+                  ? "translate-y-0 scale-100"
+                  : "-translate-y-2 scale-[0.98]"
+              }`}
             >
-              {months.map((month) => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </SelectWrapper>
-        </FilterField>
-
-        <FilterField label="Año">
-          <SelectWrapper>
-            <select
-              value={yearValue}
-              onChange={(event) => updateParam("year", event.target.value)}
-              className={selectClass}
-            >
-              {yearOptions.map((year) => (
-                <option key={year.value} value={year.value}>
-                  {year.label}
-                </option>
-              ))}
-            </select>
-          </SelectWrapper>
-        </FilterField>
-
-        <FilterField label="Orden">
-          <SelectWrapper>
-            <select
-              value={orderValue}
-              onChange={(event) => updateParam("order", event.target.value)}
-              className={selectClass}
-            >
-              <option value="desc">Recientes</option>
-              <option value="asc">Antiguas</option>
-            </select>
-          </SelectWrapper>
-        </FilterField>
+              {filtersContent}
+            </div>
+          </div>
+        </div>
       </div>
 
       {hasActiveFilters && (

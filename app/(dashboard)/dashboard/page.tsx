@@ -69,26 +69,31 @@ async function getStats(userId: string, currency: Currency, rate: number) {
   const currentMonth = getCurrentMonthRange();
   const previousMonth = getPreviousMonthRange();
 
-  const [thisMonthTx, lastMonthTx] = await Promise.all([
-    prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: currentMonth.start,
-          lt: currentMonth.end,
-        },
+  const [thisMonthTx, lastMonthTx, allTransactions] = await Promise.all([
+  prisma.transaction.findMany({
+    where: {
+      userId,
+      date: {
+        gte: currentMonth.start,
+        lt: currentMonth.end,
       },
-    }),
-    prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: previousMonth.start,
-          lt: previousMonth.end,
-        },
+    },
+  }),
+  prisma.transaction.findMany({
+    where: {
+      userId,
+      date: {
+        gte: previousMonth.start,
+        lt: previousMonth.end,
       },
-    }),
-  ]);
+    },
+  }),
+  prisma.transaction.findMany({
+    where: {
+      userId,
+    },
+  }),
+]);
 
   const sum = (
     transactions: {
@@ -114,26 +119,33 @@ async function getStats(userId: string, currency: Currency, rate: number) {
 
   const thisMonth = sum(thisMonthTx);
   const lastMonth = sum(lastMonthTx);
+  const total = sum(allTransactions);
 
   return {
-    income: convertCurrency(thisMonth.income, currency, rate),
-    expenses: convertCurrency(thisMonth.expenses, currency, rate),
-    balance: convertCurrency(thisMonth.balance, currency, rate),
-    movements: thisMonth.movements,
-    incomeChange: calculatePercentageChange(
-      thisMonth.income,
-      lastMonth.income
-    ),
-    expensesChange: calculatePercentageChange(
-      thisMonth.expenses,
-      lastMonth.expenses
-    ),
-    balanceChange: convertCurrency(
-      thisMonth.balance - lastMonth.balance,
-      currency,
-      rate
-    ),
-  };
+  totalBalance: convertCurrency(total.balance, currency, rate),
+  totalIncome: convertCurrency(total.income, currency, rate),
+  totalExpenses: convertCurrency(total.expenses, currency, rate),
+  totalMovements: total.movements,
+
+  income: convertCurrency(thisMonth.income, currency, rate),
+  expenses: convertCurrency(thisMonth.expenses, currency, rate),
+  balance: convertCurrency(thisMonth.balance, currency, rate),
+  movements: thisMonth.movements,
+
+  incomeChange: calculatePercentageChange(
+    thisMonth.income,
+    lastMonth.income
+  ),
+  expensesChange: calculatePercentageChange(
+    thisMonth.expenses,
+    lastMonth.expenses
+  ),
+  balanceChange: convertCurrency(
+    thisMonth.balance - lastMonth.balance,
+    currency,
+    rate
+  ),
+};
 }
 
 async function getChartData(userId: string, currency: Currency, rate: number) {
@@ -294,7 +306,7 @@ export default async function DashboardPage() {
 
   const cards = [
     {
-      title: "Balance del mes",
+      title: "Resultado del mes",
       value: stats.balance,
       icon: Wallet,
       color: stats.balance >= 0 ? "text-emerald-600" : "text-red-600",
@@ -347,7 +359,69 @@ export default async function DashboardPage() {
   </div>
 </div>
       </div>
+<Card className="overflow-hidden border border-gray-200 bg-white shadow-none">
+  <CardContent className="p-0">
+    <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <div
+            className={`flex h-9 w-9 items-center justify-center rounded-2xl border ${
+              stats.totalBalance >= 0
+                ? "border-emerald-100 bg-emerald-50 text-emerald-600"
+                : "border-red-100 bg-red-50 text-red-600"
+            }`}
+          >
+            <Wallet className="h-4 w-4" />
+          </div>
 
+          <p className="text-sm font-medium text-gray-500">Balance total</p>
+        </div>
+
+        <p
+          className={`text-3xl font-bold sm:text-4xl ${
+            stats.totalBalance >= 0 ? "text-emerald-600" : "text-red-600"
+          }`}
+        >
+          <AnimatedMoney
+            value={Math.abs(stats.totalBalance)}
+            prefix={
+              stats.totalBalance < 0
+                ? `- ${currencySymbol} `
+                : `${currencySymbol} `
+            }
+          />
+        </p>
+
+        <p className="mt-2 text-sm text-gray-500">
+          Resultado histórico de todos tus movimientos registrados
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:min-w-80">
+        <div>
+          <p className="mb-1 text-xs text-gray-400">Ingresos</p>
+          <p className="text-sm font-semibold text-emerald-600">
+            {formatShortMoney(stats.totalIncome, currency)}
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs text-gray-400">Gastos</p>
+          <p className="text-sm font-semibold text-red-600">
+            {formatShortMoney(stats.totalExpenses, currency)}
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs text-gray-400">Mov.</p>
+          <p className="text-sm font-semibold text-gray-900">
+            {stats.totalMovements}
+          </p>
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((card) => (
           <Card

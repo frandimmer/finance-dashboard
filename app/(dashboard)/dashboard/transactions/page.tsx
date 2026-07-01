@@ -6,6 +6,11 @@ import { TransactionForm } from "@/components/dashboard/transaction-form";
 import { DeleteTransaction } from "@/components/dashboard/delete-transaction";
 import { TransactionFilters } from "@/components/dashboard/transaction-filters";
 import { EditTransaction } from "@/components/dashboard/edit-transaction";
+import {
+  convertCurrency,
+  getCurrencySymbol,
+  type Currency,
+} from "@/lib/finance";
 
 function getDateRange(month?: string, year?: string) {
   const selectedMonth = month ? Number(month) : null;
@@ -38,6 +43,18 @@ function getDateRange(month?: string, year?: string) {
   }
 
   return null;
+}
+
+function formatMoney(amount: number, currency: Currency) {
+  const symbol = getCurrencySymbol(currency);
+
+  return `${amount < 0 ? "-" : ""}${symbol} ${Math.abs(amount).toLocaleString(
+    "es-AR",
+    {
+      minimumFractionDigits: currency === "USD" ? 2 : 0,
+      maximumFractionDigits: currency === "USD" ? 2 : 0,
+    }
+  )}`;
 }
 
 async function getTransactions(
@@ -107,9 +124,27 @@ export default async function TransactionsPage({ searchParams }: Props) {
   const session = await auth();
   const params = await searchParams;
 
+  const user = await prisma.user.findUnique({
+    where: {
+      email: session!.user!.email!,
+    },
+    select: {
+      id: true,
+      preferredCurrency: true,
+    },
+  });
+
+  const currency = user!.preferredCurrency as Currency;
+
+  const response = await fetch("http://localhost:3000/api/exchange-rate", {
+    cache: "no-store",
+  });
+
+  const { rate } = await response.json();
+
   const [transactions, categories] = await Promise.all([
     getTransactions(
-      session!.user!.id!,
+      user!.id,
       params.search,
       params.type,
       params.category,
@@ -117,15 +152,11 @@ export default async function TransactionsPage({ searchParams }: Props) {
       params.month,
       params.year
     ),
-    getCategories(session!.user!.id!),
+    getCategories(user!.id),
   ]);
 
   const hasActiveFilters = Boolean(
-    params.search ||
-      params.type ||
-      params.category ||
-      params.month ||
-      params.year
+    params.search || params.type || params.category || params.month || params.year
   );
 
   const totalIncome = transactions
@@ -137,6 +168,10 @@ export default async function TransactionsPage({ searchParams }: Props) {
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const totalFiltered = totalIncome - totalExpenses;
+
+  const convertedTotalIncome = convertCurrency(totalIncome, currency, rate);
+  const convertedTotalExpenses = convertCurrency(totalExpenses, currency, rate);
+  const convertedTotalFiltered = convertCurrency(totalFiltered, currency, rate);
 
   let runningBalance = 0;
 
@@ -163,56 +198,58 @@ export default async function TransactionsPage({ searchParams }: Props) {
           <h1 className="text-2xl font-semibold text-gray-900">
             Transacciones
           </h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="mt-1 text-sm text-gray-500">
             Registrá y analizá movimientos
           </p>
         </div>
 
-        <TransactionForm userId={session!.user!.id!} categories={categories} />
+        <TransactionForm userId={user!.id} categories={categories} />
       </div>
 
       <TransactionFilters categories={categories} />
 
-      <Card className="bg-white border border-gray-200 shadow-none">
+      <Card className="border border-gray-200 bg-white shadow-none">
         <CardContent className="py-4">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>
-              <p className="text-xs text-gray-400 mb-1">Ingresos</p>
+              <p className="mb-1 text-xs text-gray-400">Ingresos</p>
               <p className="text-sm font-semibold text-emerald-600">
-                +${totalIncome.toLocaleString("es-AR")}
+                +{formatMoney(convertedTotalIncome, currency)}
               </p>
             </div>
 
             <div>
-              <p className="text-xs text-gray-400 mb-1">Gastos</p>
+              <p className="mb-1 text-xs text-gray-400">Gastos</p>
               <p className="text-sm font-semibold text-red-600">
-                -${totalExpenses.toLocaleString("es-AR")}
+                -{formatMoney(convertedTotalExpenses, currency)}
               </p>
             </div>
 
             <div>
-              <p className="text-xs text-gray-400 mb-1">Movimientos</p>
+              <p className="mb-1 text-xs text-gray-400">Movimientos</p>
               <p className="text-sm font-semibold text-gray-900">
                 {transactions.length}
               </p>
             </div>
 
             <div>
-              <p className="text-xs text-gray-400 mb-1">Neto filtrado</p>
+              <p className="mb-1 text-xs text-gray-400">Neto filtrado</p>
               <p
                 className={`text-sm font-semibold ${
-                  totalFiltered >= 0 ? "text-emerald-600" : "text-red-600"
+                  convertedTotalFiltered >= 0
+                    ? "text-emerald-600"
+                    : "text-red-600"
                 }`}
               >
-                {totalFiltered >= 0 ? "+" : "-"}$
-                {Math.abs(totalFiltered).toLocaleString("es-AR")}
+                {convertedTotalFiltered >= 0 ? "+" : "-"}
+                {formatMoney(Math.abs(convertedTotalFiltered), currency)}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-white border border-gray-200 shadow-none">
+      <Card className="border border-gray-200 bg-white shadow-none">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-gray-500">
             Últimas transacciones
@@ -222,7 +259,7 @@ export default async function TransactionsPage({ searchParams }: Props) {
         <CardContent>
           {transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-14 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white border border-gray-200">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white">
                 <span className="text-lg text-gray-400">—</span>
               </div>
 
@@ -268,15 +305,13 @@ export default async function TransactionsPage({ searchParams }: Props) {
                   label = "Hoy";
                 }
 
-                if (
-                  transactionDate.toDateString() === yesterday.toDateString()
-                ) {
+                if (transactionDate.toDateString() === yesterday.toDateString()) {
                   label = "Ayer";
                 }
 
                 return (
                   <div key={date} className="space-y-3">
-                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-gray-100 px-1 py-3">
+                    <div className="sticky top-0 z-10 border-b border-gray-100 bg-white/95 px-1 py-3 backdrop-blur">
                       <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                         {label}
                       </span>
@@ -284,8 +319,17 @@ export default async function TransactionsPage({ searchParams }: Props) {
 
                     <div className="flex flex-col gap-2">
                       {transactionsByDate.map((transaction) => {
-                        const balanceAfter =
-                          balanceMap.get(transaction.id) ?? 0;
+                        const balanceAfter = balanceMap.get(transaction.id) ?? 0;
+                        const convertedBalanceAfter = convertCurrency(
+                          balanceAfter,
+                          currency,
+                          rate
+                        );
+                        const convertedAmount = convertCurrency(
+                          transaction.amount,
+                          currency,
+                          rate
+                        );
 
                         return (
                           <div
@@ -309,14 +353,15 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                   Balance:{" "}
                                   <span
                                     className={
-                                      balanceAfter >= 0
+                                      convertedBalanceAfter >= 0
                                         ? "text-emerald-500"
                                         : "text-red-500"
                                     }
                                   >
-                                    {balanceAfter >= 0 ? "+" : "-"}$
-                                    {Math.abs(balanceAfter).toLocaleString(
-                                      "es-AR"
+                                    {convertedBalanceAfter >= 0 ? "+" : "-"}
+                                    {formatMoney(
+                                      Math.abs(convertedBalanceAfter),
+                                      currency
                                     )}
                                   </span>
                                 </span>
@@ -327,12 +372,12 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                   variant="outline"
                                   className={
                                     transaction.type === "income"
-                                      ? "text-emerald-600 border-emerald-200 bg-emerald-50"
-                                      : "text-red-600 border-red-200 bg-red-50"
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                                      : "border-red-200 bg-red-50 text-red-600"
                                   }
                                 >
-                                  {transaction.type === "income" ? "+" : "-"}$
-                                  {transaction.amount.toLocaleString("es-AR")}
+                                  {transaction.type === "income" ? "+" : "-"}
+                                  {formatMoney(convertedAmount, currency)}
                                 </Badge>
 
                                 <EditTransaction
@@ -368,10 +413,8 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                         : "text-red-600"
                                     }`}
                                   >
-                                    {transaction.type === "income" ? "+" : "-"}$
-                                    {transaction.amount.toLocaleString(
-                                      "es-AR"
-                                    )}
+                                    {transaction.type === "income" ? "+" : "-"}
+                                    {formatMoney(convertedAmount, currency)}
                                   </p>
                                 </div>
                               </div>
@@ -381,14 +424,15 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                   Balance:{" "}
                                   <span
                                     className={
-                                      balanceAfter >= 0
+                                      convertedBalanceAfter >= 0
                                         ? "text-emerald-500"
                                         : "text-red-500"
                                     }
                                   >
-                                    {balanceAfter >= 0 ? "+" : "-"}$
-                                    {Math.abs(balanceAfter).toLocaleString(
-                                      "es-AR"
+                                    {convertedBalanceAfter >= 0 ? "+" : "-"}
+                                    {formatMoney(
+                                      Math.abs(convertedBalanceAfter),
+                                      currency
                                     )}
                                   </span>
                                 </span>

@@ -1,190 +1,252 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import Link from "next/link"
-import { Pencil } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useTransition } from "react";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"
-import { updateTransaction } from "@/app/actions/updateTransaction"
+} from "@/components/ui/sheet";
+import { updateTransaction } from "@/app/actions/updateTransaction";
 
 interface Props {
   transaction: {
-    id: string
-    amount: number
-    description: string | null
-    type: string
-    categoryId: string | null
-    date: Date
-  }
+    id: string;
+    amount: number;
+    description: string | null;
+    type: string;
+    categoryId: string | null;
+    date: Date;
+  };
   categories: {
-    id: string
-    name: string
-    icon?: string | null
-  }[]
+    id: string;
+    name: string;
+    icon?: string | null;
+  }[];
 }
 
-export function EditTransaction({
-  transaction,
-  categories,
-}: Props) {
-  const [open, setOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
+function formatDateForInput(date: Date) {
+  const localDate = new Date(date);
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, "0");
+  const day = String(localDate.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function EditTransaction({ transaction, categories }: Props) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     amount: transaction.amount.toString(),
     description: transaction.description || "",
     type: transaction.type,
     categoryId: transaction.categoryId || "",
-    date: new Date(transaction.date).toISOString().split("T")[0],
-  })
+    date: formatDateForInput(transaction.date),
+  });
 
-  async function handleSubmit() {
-    if (!form.amount || isNaN(Number(form.amount))) return
+  const amountNumber = Number(form.amount);
+  const isAmountValid =
+    form.amount !== "" && !isNaN(amountNumber) && amountNumber > 0;
+
+  function handleSubmit() {
+    setError("");
+
+    if (!isAmountValid) {
+      setError("Ingresá un monto válido mayor a 0.");
+      return;
+    }
+
+    if (!form.date) {
+      setError("Seleccioná una fecha.");
+      return;
+    }
 
     startTransition(async () => {
-      await updateTransaction({
-        id: transaction.id,
-        amount: Number(form.amount),
-        description: form.description,
-        type: form.type,
-        categoryId: form.categoryId || null,
-        date: form.date,
-      })
+      try {
+        await updateTransaction({
+          id: transaction.id,
+          amount: amountNumber,
+          description: form.description,
+          type: form.type,
+          categoryId: form.categoryId || null,
+          date: form.date,
+        });
 
-      setOpen(false)
-    })
+        setOpen(false);
+      } catch {
+        setError("Ocurrió un error al guardar. Intentá nuevamente.");
+      }
+    });
+  }
+
+  function handleOpenChange(value: boolean) {
+    setOpen(value);
+
+    if (!value) {
+      setError("");
+    }
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        {/* MODIFICADO: Mismo estilo base que el Delete, cambiando a azul en hover */}
-        <button className="text-gray-300 hover:text-blue-500 transition-colors">
-          <Pencil className="w-4 h-4" />
+        <button className="text-gray-300 transition-colors hover:text-blue-500">
+          <Pencil className="h-4 w-4" />
         </button>
       </SheetTrigger>
 
-      <SheetContent>
+      <SheetContent className="w-full sm:max-w-md">
         <SheetHeader className="px-6 pt-6">
           <SheetTitle>Editar transacción</SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-col gap-4 mt-6 px-6">
-          {/* TYPE */}
-          <div className="flex gap-2">
-            {["expense", "income"].map((type) => (
-              <button
-                key={type}
-                onClick={() => setForm({ ...form, type })}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  form.type === type
-                    ? type === "income"
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : "bg-red-50 text-red-700 border border-red-200"
-                    : "bg-gray-100 text-gray-500 border border-transparent"
-                }`}
-              >
-                {type === "income" ? "Ingreso" : "Gasto"}
-              </button>
-            ))}
+        <div className="mt-6 flex flex-col gap-5 px-6">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, type: "expense" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.type === "expense"
+                  ? "bg-white text-red-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Gasto
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, type: "income" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.type === "income"
+                  ? "bg-white text-emerald-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Ingreso
+            </button>
           </div>
 
-          {/* DESCRIPTION */}
-          <Input
-            placeholder="Descripción"
-            value={form.description}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                description: e.target.value,
-              })
-            }
-          />
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <span className="text-xs font-medium text-gray-400">Monto</span>
 
-          {/* AMOUNT */}
-          <Input
-            placeholder="Monto"
-            type="number"
-            value={form.amount}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                amount: e.target.value,
-              })
-            }
-          />
+            <div className="mt-2 flex items-center gap-2">
+              <span
+                className={`text-2xl font-semibold ${
+                  form.type === "income" ? "text-emerald-600" : "text-red-600"
+                }`}
+              >
+                {form.type === "income" ? "+" : "-"}$
+              </span>
 
-          {/* DATE */}
-          <Input
-            type="date"
-            value={form.date}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                date: e.target.value,
-              })
-            }
-          />
+              <input
+                value={form.amount}
+                onChange={(event) =>
+                  setForm({ ...form, amount: event.target.value })
+                }
+                placeholder="0"
+                inputMode="decimal"
+                className="w-full bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
+              />
+            </div>
+          </div>
 
-          {/* CATEGORIES */}
           <div className="flex flex-col gap-2">
-            <span className="text-sm text-gray-500">
+            <span className="text-sm font-medium text-gray-500">
+              Descripción
+            </span>
+
+            <Input
+              placeholder="Ej: Supermercado, sueldo, alquiler..."
+              value={form.description}
+              onChange={(event) =>
+                setForm({ ...form, description: event.target.value })
+              }
+              className="h-11 rounded-xl"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-gray-500">Fecha</span>
+
+            <Input
+              type="date"
+              value={form.date}
+              onChange={(event) =>
+                setForm({ ...form, date: event.target.value })
+              }
+              className="h-11 rounded-xl"
+            />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-sm font-medium text-gray-500">
               Categoría (opcional)
             </span>
 
             {categories.length === 0 ? (
-              <p className="text-xs text-gray-400">
-                No tenés categorías creadas{" "}
-                <Link
-                  href="/dashboard/categories"
-                  className="text-blue-500 hover:underline"
-                >
-                  Creá una acá
-                </Link>
-              </p>
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm text-gray-500">
+                  No tenés categorías creadas.{" "}
+                  <Link
+                    href="/dashboard/categories"
+                    className="font-medium text-gray-900 hover:underline"
+                  >
+                    Creá una acá
+                  </Link>
+                  .
+                </p>
+              </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {categories.map((cat) => (
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50/60 p-3">
+                {categories.map((category) => (
                   <button
-                    key={cat.id}
+                    key={category.id}
+                    type="button"
                     onClick={() =>
                       setForm({
                         ...form,
                         categoryId:
-                          form.categoryId === cat.id ? "" : cat.id,
+                          form.categoryId === category.id ? "" : category.id,
                       })
                     }
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
-                      form.categoryId === cat.id
-                        ? "bg-blue-50 border-blue-300 text-blue-700"
-                        : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                      form.categoryId === category.id
+                        ? "border-gray-900 bg-gray-900 text-white"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     }`}
                   >
-                    {cat.icon && <span>{cat.icon}</span>}
-                    {cat.name}
+                    {category.icon && <span>{category.icon}</span>}
+                    {category.name}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* SAVE */}
+          {error && (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+              <p className="text-sm font-medium text-red-600">{error}</p>
+            </div>
+          )}
+
           <Button
             onClick={handleSubmit}
             disabled={isPending}
-            className="w-full"
+            className="h-11 w-full rounded-xl"
           >
             {isPending ? "Guardando..." : "Guardar cambios"}
           </Button>
         </div>
       </SheetContent>
     </Sheet>
-  )
+  );
 }

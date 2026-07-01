@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       description,
       amount,
       type,
-      date: new Date(date),
+      date: new Date(`${date}T12:00:00`),
       userId: session.user!.id!,
       categoryId: categoryId ?? null,
     },

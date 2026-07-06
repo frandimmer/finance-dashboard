@@ -14,12 +14,15 @@ import {
 } from "@/components/ui/sheet";
 import { updateTransaction } from "@/app/actions/updateTransaction";
 
+type Currency = "ARS" | "USD";
+
 interface Props {
   transaction: {
     id: string;
     amount: number;
     description: string | null;
     type: string;
+    currency: Currency;
     categoryId: string | null;
     date: Date;
   };
@@ -39,6 +42,10 @@ function formatDateForInput(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function getCurrencySymbol(currency: Currency) {
+  return currency === "USD" ? "US$" : "$";
+}
+
 export function EditTransaction({ transaction, categories }: Props) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -48,6 +55,7 @@ export function EditTransaction({ transaction, categories }: Props) {
     amount: transaction.amount.toString(),
     description: transaction.description || "",
     type: transaction.type,
+    currency: transaction.currency,
     categoryId: transaction.categoryId || "",
     date: formatDateForInput(transaction.date),
   });
@@ -76,6 +84,7 @@ export function EditTransaction({ transaction, categories }: Props) {
           amount: amountNumber,
           description: form.description,
           type: form.type,
+          currency: form.currency,
           categoryId: form.categoryId || null,
           date: form.date,
         });
@@ -135,29 +144,52 @@ export function EditTransaction({ transaction, categories }: Props) {
             </button>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-4">
-            <span className="text-xs font-medium text-gray-400">Monto</span>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, currency: "ARS" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.currency === "ARS"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              ARS
+            </button>
 
-            <div className="mt-2 flex items-center gap-2">
-              <span
-                className={`text-2xl font-semibold ${
-                  form.type === "income" ? "text-emerald-600" : "text-red-600"
-                }`}
-              >
-                {form.type === "income" ? "+" : "-"}$
-              </span>
-
-              <input
-                value={form.amount}
-                onChange={(event) =>
-                  setForm({ ...form, amount: event.target.value })
-                }
-                placeholder="0"
-                inputMode="decimal"
-                className="w-full bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, currency: "USD" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.currency === "USD"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              USD
+            </button>
           </div>
+
+          <div className="mt-2 flex min-w-0 items-center gap-3">
+  <span
+    className={`shrink-0 whitespace-nowrap text-2xl font-semibold ${
+      form.type === "income" ? "text-emerald-600" : "text-red-600"
+    }`}
+  >
+    {form.type === "income" ? "+" : "-"}
+    {getCurrencySymbol(form.currency)}
+  </span>
+
+  <input
+    value={form.amount}
+    onChange={(event) =>
+      setForm({ ...form, amount: event.target.value })
+    }
+    placeholder="0"
+    inputMode="decimal"
+    className="min-w-0 flex-1 bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
+  />
+</div>
 
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-gray-500">

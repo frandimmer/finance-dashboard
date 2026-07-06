@@ -6,11 +6,7 @@ import { TransactionForm } from "@/components/dashboard/transaction-form";
 import { DeleteTransaction } from "@/components/dashboard/delete-transaction";
 import { TransactionFilters } from "@/components/dashboard/transaction-filters";
 import { EditTransaction } from "@/components/dashboard/edit-transaction";
-import {
-  convertCurrency,
-  getCurrencySymbol,
-  type Currency,
-} from "@/lib/finance";
+import { getCurrencySymbol, type Currency } from "@/lib/finance";
 
 function getDateRange(month?: string, year?: string) {
   const selectedMonth = month ? Number(month) : null;
@@ -55,6 +51,39 @@ function formatMoney(amount: number, currency: Currency) {
       maximumFractionDigits: currency === "USD" ? 2 : 0,
     }
   )}`;
+}
+
+function calculateCurrencyTotals(
+  transactions: Awaited<ReturnType<typeof getTransactions>>
+) {
+  const totals = {
+    ARS: {
+      income: 0,
+      expenses: 0,
+      net: 0,
+    },
+    USD: {
+      income: 0,
+      expenses: 0,
+      net: 0,
+    },
+  };
+
+  transactions.forEach((transaction) => {
+    const currency = transaction.currency as Currency;
+
+    if (transaction.type === "income") {
+      totals[currency].income += transaction.amount;
+      totals[currency].net += transaction.amount;
+    }
+
+    if (transaction.type === "expense") {
+      totals[currency].expenses += transaction.amount;
+      totals[currency].net -= transaction.amount;
+    }
+  });
+
+  return totals;
 }
 
 async function getTransactions(
@@ -130,17 +159,8 @@ export default async function TransactionsPage({ searchParams }: Props) {
     },
     select: {
       id: true,
-      preferredCurrency: true,
     },
   });
-
-  const currency = user!.preferredCurrency as Currency;
-
-  const response = await fetch("http://localhost:3000/api/exchange-rate", {
-    cache: "no-store",
-  });
-
-  const { rate } = await response.json();
 
   const [transactions, categories] = await Promise.all([
     getTransactions(
@@ -156,39 +176,36 @@ export default async function TransactionsPage({ searchParams }: Props) {
   ]);
 
   const hasActiveFilters = Boolean(
-    params.search || params.type || params.category || params.month || params.year
+    params.search ||
+      params.type ||
+      params.category ||
+      params.month ||
+      params.year
   );
 
-  const totalIncome = transactions
-    .filter((transaction) => transaction.type === "income")
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const totalExpenses = transactions
-    .filter((transaction) => transaction.type === "expense")
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const totalFiltered = totalIncome - totalExpenses;
-
-  const convertedTotalIncome = convertCurrency(totalIncome, currency, rate);
-  const convertedTotalExpenses = convertCurrency(totalExpenses, currency, rate);
-  const convertedTotalFiltered = convertCurrency(totalFiltered, currency, rate);
-
-  let runningBalance = 0;
+  const totals = calculateCurrencyTotals(transactions);
 
   const orderedForBalance =
     (params.order ?? "desc") === "desc"
       ? [...transactions].reverse()
       : [...transactions];
 
+  const runningBalance = {
+    ARS: 0,
+    USD: 0,
+  };
+
   const balanceMap = new Map<string, number>();
 
   orderedForBalance.forEach((transaction) => {
-    runningBalance +=
+    const currency = transaction.currency as Currency;
+
+    runningBalance[currency] +=
       transaction.type === "income"
         ? transaction.amount
         : -transaction.amount;
 
-    balanceMap.set(transaction.id, runningBalance);
+    balanceMap.set(transaction.id, runningBalance[currency]);
   });
 
   return (
@@ -199,7 +216,7 @@ export default async function TransactionsPage({ searchParams }: Props) {
             Transacciones
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Registrá y analizá movimientos
+            Registrá y analizá movimientos en ARS y USD
           </p>
         </div>
 
@@ -208,23 +225,87 @@ export default async function TransactionsPage({ searchParams }: Props) {
 
       <TransactionFilters categories={categories} />
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="border border-gray-200 bg-white shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Resumen ARS
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Ingresos</p>
+                <p className="text-sm font-semibold text-emerald-600">
+                  +{formatMoney(totals.ARS.income, "ARS")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Gastos</p>
+                <p className="text-sm font-semibold text-red-600">
+                  -{formatMoney(totals.ARS.expenses, "ARS")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Neto</p>
+                <p
+                  className={`text-sm font-semibold ${
+                    totals.ARS.net >= 0 ? "text-emerald-600" : "text-red-600"
+                  }`}
+                >
+                  {totals.ARS.net >= 0 ? "+" : "-"}
+                  {formatMoney(Math.abs(totals.ARS.net), "ARS")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200 bg-white shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Resumen USD
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Ingresos</p>
+                <p className="text-sm font-semibold text-emerald-600">
+                  +{formatMoney(totals.USD.income, "USD")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Gastos</p>
+                <p className="text-sm font-semibold text-red-600">
+                  -{formatMoney(totals.USD.expenses, "USD")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Neto</p>
+                <p
+                  className={`text-sm font-semibold ${
+                    totals.USD.net >= 0 ? "text-emerald-600" : "text-red-600"
+                  }`}
+                >
+                  {totals.USD.net >= 0 ? "+" : "-"}
+                  {formatMoney(Math.abs(totals.USD.net), "USD")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="border border-gray-200 bg-white shadow-none">
         <CardContent className="py-4">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div>
-              <p className="mb-1 text-xs text-gray-400">Ingresos</p>
-              <p className="text-sm font-semibold text-emerald-600">
-                +{formatMoney(convertedTotalIncome, currency)}
-              </p>
-            </div>
-
-            <div>
-              <p className="mb-1 text-xs text-gray-400">Gastos</p>
-              <p className="text-sm font-semibold text-red-600">
-                -{formatMoney(convertedTotalExpenses, currency)}
-              </p>
-            </div>
-
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             <div>
               <p className="mb-1 text-xs text-gray-400">Movimientos</p>
               <p className="text-sm font-semibold text-gray-900">
@@ -233,16 +314,26 @@ export default async function TransactionsPage({ searchParams }: Props) {
             </div>
 
             <div>
-              <p className="mb-1 text-xs text-gray-400">Neto filtrado</p>
+              <p className="mb-1 text-xs text-gray-400">Balance ARS filtrado</p>
               <p
                 className={`text-sm font-semibold ${
-                  convertedTotalFiltered >= 0
-                    ? "text-emerald-600"
-                    : "text-red-600"
+                  totals.ARS.net >= 0 ? "text-emerald-600" : "text-red-600"
                 }`}
               >
-                {convertedTotalFiltered >= 0 ? "+" : "-"}
-                {formatMoney(Math.abs(convertedTotalFiltered), currency)}
+                {totals.ARS.net >= 0 ? "+" : "-"}
+                {formatMoney(Math.abs(totals.ARS.net), "ARS")}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-1 text-xs text-gray-400">Balance USD filtrado</p>
+              <p
+                className={`text-sm font-semibold ${
+                  totals.USD.net >= 0 ? "text-emerald-600" : "text-red-600"
+                }`}
+              >
+                {totals.USD.net >= 0 ? "+" : "-"}
+                {formatMoney(Math.abs(totals.USD.net), "USD")}
               </p>
             </div>
           </div>
@@ -305,7 +396,9 @@ export default async function TransactionsPage({ searchParams }: Props) {
                   label = "Hoy";
                 }
 
-                if (transactionDate.toDateString() === yesterday.toDateString()) {
+                if (
+                  transactionDate.toDateString() === yesterday.toDateString()
+                ) {
                   label = "Ayer";
                 }
 
@@ -319,17 +412,11 @@ export default async function TransactionsPage({ searchParams }: Props) {
 
                     <div className="flex flex-col gap-2">
                       {transactionsByDate.map((transaction) => {
-                        const balanceAfter = balanceMap.get(transaction.id) ?? 0;
-                        const convertedBalanceAfter = convertCurrency(
-                          balanceAfter,
-                          currency,
-                          rate
-                        );
-                        const convertedAmount = convertCurrency(
-                          transaction.amount,
-                          currency,
-                          rate
-                        );
+                        const transactionCurrency =
+                          transaction.currency as Currency;
+
+                        const balanceAfter =
+                          balanceMap.get(transaction.id) ?? 0;
 
                         return (
                           <div
@@ -342,26 +429,36 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                   {transaction.description || "Sin descripción"}
                                 </span>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-400">
                                     {transaction.category?.name ||
                                       "Sin categoría"}
                                   </span>
+
+                                  <span className="inline-flex w-fit items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-500">
+                                    {transactionCurrency}
+                                  </span>
+
+                                  {transaction.recurringTransactionId && (
+                                    <span className="inline-flex w-fit items-center rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-500">
+                                      Recurrente
+                                    </span>
+                                  )}
                                 </div>
 
                                 <span className="text-xs text-gray-400">
-                                  Balance:{" "}
+                                  Balance {transactionCurrency}:{" "}
                                   <span
                                     className={
-                                      convertedBalanceAfter >= 0
+                                      balanceAfter >= 0
                                         ? "text-emerald-500"
                                         : "text-red-500"
                                     }
                                   >
-                                    {convertedBalanceAfter >= 0 ? "+" : "-"}
+                                    {balanceAfter >= 0 ? "+" : "-"}
                                     {formatMoney(
-                                      Math.abs(convertedBalanceAfter),
-                                      currency
+                                      Math.abs(balanceAfter),
+                                      transactionCurrency
                                     )}
                                   </span>
                                 </span>
@@ -377,7 +474,10 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                   }
                                 >
                                   {transaction.type === "income" ? "+" : "-"}
-                                  {formatMoney(convertedAmount, currency)}
+                                  {formatMoney(
+                                    transaction.amount,
+                                    transactionCurrency
+                                  )}
                                 </Badge>
 
                                 <EditTransaction
@@ -402,6 +502,16 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                       {transaction.category?.name ||
                                         "Sin categoría"}
                                     </span>
+
+                                    <span className="inline-flex w-fit items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-500">
+                                      {transactionCurrency}
+                                    </span>
+
+                                    {transaction.recurringTransactionId && (
+                                      <span className="inline-flex w-fit items-center rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-500">
+                                        Recurrente
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
 
@@ -414,25 +524,28 @@ export default async function TransactionsPage({ searchParams }: Props) {
                                     }`}
                                   >
                                     {transaction.type === "income" ? "+" : "-"}
-                                    {formatMoney(convertedAmount, currency)}
+                                    {formatMoney(
+                                      transaction.amount,
+                                      transactionCurrency
+                                    )}
                                   </p>
                                 </div>
                               </div>
 
                               <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
                                 <span className="text-xs text-gray-400">
-                                  Balance:{" "}
+                                  Balance {transactionCurrency}:{" "}
                                   <span
                                     className={
-                                      convertedBalanceAfter >= 0
+                                      balanceAfter >= 0
                                         ? "text-emerald-500"
                                         : "text-red-500"
                                     }
                                   >
-                                    {convertedBalanceAfter >= 0 ? "+" : "-"}
+                                    {balanceAfter >= 0 ? "+" : "-"}
                                     {formatMoney(
-                                      Math.abs(convertedBalanceAfter),
-                                      currency
+                                      Math.abs(balanceAfter),
+                                      transactionCurrency
                                     )}
                                   </span>
                                 </span>

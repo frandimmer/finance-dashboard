@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     const id = body.id as string | undefined;
     const name = String(body.name ?? "").trim();
     const amount = Number(body.amount);
+    const currency = body.currency as "ARS" | "USD";
     const type = body.type as string;
     const dayOfMonth = Number(body.dayOfMonth);
     const userId = body.userId as string;
@@ -34,6 +35,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (currency !== "ARS" && currency !== "USD") {
+      return NextResponse.json(
+        { error: "Moneda inválida." },
+        { status: 400 }
+      );
+    }
+
     if (type !== "income" && type !== "expense") {
       return NextResponse.json(
         { error: "Tipo inválido." },
@@ -54,70 +62,73 @@ export async function POST(request: Request) {
     }
 
     if (id) {
-  const result = await prisma.recurringTransaction.updateMany({
-    where: {
-      id,
-      userId,
-    },
-    data: {
-      name,
-      amount,
-      type,
-      dayOfMonth,
-      categoryId,
-    },
-  });
+      const result = await prisma.recurringTransaction.updateMany({
+        where: {
+          id,
+          userId,
+        },
+        data: {
+          name,
+          amount,
+          currency,
+          type,
+          dayOfMonth,
+          categoryId,
+        },
+      });
 
-  if (result.count === 0) {
-    return NextResponse.json(
-      { error: "Recurrente no encontrado." },
-      { status: 404 }
-    );
-  }
+      if (result.count === 0) {
+        return NextResponse.json(
+          { error: "Recurrente no encontrado." },
+          { status: 404 }
+        );
+      }
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const lastDayOfMonth = new Date(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    0
-  ).getDate();
-
-  const safeDay = Math.min(dayOfMonth, lastDayOfMonth);
-
-  await prisma.transaction.updateMany({
-    where: {
-      userId,
-      recurringTransactionId: id,
-      date: {
-        gte: startOfMonth,
-        lt: endOfMonth,
-      },
-    },
-    data: {
-      amount,
-      description: name,
-      type,
-      categoryId,
-      date: new Date(
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const lastDayOfMonth = new Date(
         now.getFullYear(),
-        now.getMonth(),
-        safeDay,
-        12,
-        0,
+        now.getMonth() + 1,
         0
-      ),
-    },
-  });
+      ).getDate();
 
-  return NextResponse.json({ ok: true });
-}
+      const safeDay = Math.min(dayOfMonth, lastDayOfMonth);
+
+      await prisma.transaction.updateMany({
+        where: {
+          userId,
+          recurringTransactionId: id,
+          date: {
+            gte: startOfMonth,
+            lt: endOfMonth,
+          },
+        },
+        data: {
+          amount,
+          currency,
+          description: name,
+          type,
+          categoryId,
+          date: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            safeDay,
+            12,
+            0,
+            0
+          ),
+        },
+      });
+
+      return NextResponse.json({ ok: true });
+    }
 
     const recurring = await prisma.recurringTransaction.create({
       data: {
         name,
         amount,
+        currency,
         type,
         dayOfMonth,
         frequency: "monthly",
@@ -127,7 +138,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(recurring);
-  } catch {
+  } catch (error) {
+    console.error("RECURRING_POST_ERROR", error);
+
     return NextResponse.json(
       { error: "No se pudo guardar el recurrente." },
       { status: 500 }
@@ -168,7 +181,9 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    console.error("RECURRING_PATCH_ERROR", error);
+
     return NextResponse.json(
       { error: "No se pudo actualizar el recurrente." },
       { status: 500 }
@@ -205,7 +220,9 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    console.error("RECURRING_DELETE_ERROR", error);
+
     return NextResponse.json(
       { error: "No se pudo eliminar el recurrente." },
       { status: 500 }

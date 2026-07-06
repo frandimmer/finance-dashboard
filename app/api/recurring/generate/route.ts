@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       await prisma.transaction.create({
         data: {
           amount: recurring.amount,
+          currency: recurring.currency,
           description: recurring.name,
           type: recurring.type,
           date: getSafeDate(
@@ -86,7 +87,9 @@ export async function POST(request: Request) {
       skippedCount,
       totalActive: recurringTransactions.length,
     });
-  } catch {
+  } catch (error) {
+    console.error("RECURRING_GENERATE_ERROR", error);
+
     return NextResponse.json(
       { error: "No se pudieron generar los movimientos recurrentes." },
       { status: 500 }

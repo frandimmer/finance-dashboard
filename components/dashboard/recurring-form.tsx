@@ -18,10 +18,13 @@ interface Category {
   icon: string | null;
 }
 
+type Currency = "ARS" | "USD";
+
 interface Recurring {
   id: string;
   name: string;
   amount: number;
+  currency: Currency;
   type: string;
   dayOfMonth: number;
   categoryId: string | null;
@@ -37,10 +40,15 @@ function getInitialForm(recurring?: Recurring) {
   return {
     name: recurring?.name ?? "",
     amount: recurring?.amount.toString() ?? "",
+    currency: recurring?.currency ?? ("ARS" as Currency),
     type: recurring?.type ?? "expense",
     dayOfMonth: recurring?.dayOfMonth.toString() ?? "1",
     categoryId: recurring?.categoryId ?? "",
   };
+}
+
+function getCurrencySymbol(currency: Currency) {
+  return currency === "USD" ? "US$" : "$";
 }
 
 export function RecurringForm({ userId, categories, recurring }: Props) {
@@ -93,6 +101,7 @@ export function RecurringForm({ userId, categories, recurring }: Props) {
           id: recurring?.id,
           name: form.name.trim(),
           amount: amountNumber,
+          currency: form.currency,
           type: form.type,
           dayOfMonth: dayNumber,
           userId,
@@ -176,18 +185,45 @@ export function RecurringForm({ userId, categories, recurring }: Props) {
             </button>
           </div>
 
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, currency: "ARS" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.currency === "ARS"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              ARS
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, currency: "USD" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.currency === "USD"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              USD
+            </button>
+          </div>
+
           <div className="rounded-2xl border border-gray-200 bg-white p-4">
             <span className="text-xs font-medium text-gray-400">
               Monto recurrente
             </span>
 
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex min-w-0 items-center gap-3">
               <span
-                className={`text-2xl font-semibold ${
+                className={`shrink-0 whitespace-nowrap text-2xl font-semibold ${
                   form.type === "income" ? "text-emerald-600" : "text-red-600"
                 }`}
               >
-                {form.type === "income" ? "+" : "-"}$
+                {form.type === "income" ? "+" : "-"}
+                {getCurrencySymbol(form.currency)}
               </span>
 
               <input
@@ -197,7 +233,7 @@ export function RecurringForm({ userId, categories, recurring }: Props) {
                 }
                 placeholder="0"
                 inputMode="decimal"
-                className="w-full bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
+                className="min-w-0 flex-1 bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
               />
             </div>
           </div>

@@ -54,7 +54,6 @@ interface AppSidebarProps {
     name?: string | null;
     email?: string | null;
     image?: string | null;
-    preferredCurrency: "ARS" | "USD";
   };
 }
 

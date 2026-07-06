@@ -13,13 +13,12 @@ enum Currency {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  name              String?
-  email             String    @unique
-  emailVerified     DateTime?
-  image             String?
-  createdAt         DateTime  @default(now())
-  preferredCurrency Currency  @default(ARS)
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
 
   accounts              Account[]
   sessions              Session[]
@@ -75,13 +74,14 @@ model Transaction {
   amount      Float
   description String?
   type        String
-  currency    String   @default("ARS")
+  currency    Currency @default(ARS)
   date        DateTime @default(now())
   userId      String
   categoryId  String?
 
-  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category               Category?             @relation(fields: [categoryId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   recurringTransactionId String?
   recurringTransaction   RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id], onDelete: SetNull)
 }
@@ -89,6 +89,7 @@ model Transaction {
 model Budget {
   id         String   @id @default(cuid())
   amount     Float
+  currency   Currency @default(ARS)
   month      Int
   year       Int
   userId     String
@@ -99,17 +100,18 @@ model Budget {
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, categoryId, month, year])
+  @@unique([userId, categoryId, currency, month, year])
 }
 
 model RecurringTransaction {
-  id         String  @id @default(cuid())
+  id         String   @id @default(cuid())
   name       String
   amount     Float
+  currency   Currency @default(ARS)
   type       String
-  frequency  String  @default("monthly")
+  frequency  String   @default("monthly")
   dayOfMonth Int
-  isActive   Boolean @default(true)
+  isActive   Boolean  @default(true)
 
   userId     String
   categoryId String?

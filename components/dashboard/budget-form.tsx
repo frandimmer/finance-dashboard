@@ -25,11 +25,18 @@ interface Props {
   year: number;
 }
 
+type Currency = "ARS" | "USD";
+
 function getInitialForm() {
   return {
     amount: "",
+    currency: "ARS" as Currency,
     categoryId: "",
   };
+}
+
+function getCurrencySymbol(currency: Currency) {
+  return currency === "USD" ? "US$" : "$";
 }
 
 export function BudgetForm({ userId, categories, month, year }: Props) {
@@ -69,6 +76,7 @@ export function BudgetForm({ userId, categories, month, year }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: amountNumber,
+          currency: form.currency,
           month,
           year,
           userId,
@@ -113,13 +121,41 @@ export function BudgetForm({ userId, categories, month, year }: Props) {
         </SheetHeader>
 
         <div className="mt-6 flex flex-col gap-5 px-6">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, currency: "ARS" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.currency === "ARS"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              ARS
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, currency: "USD" })}
+              className={`h-10 rounded-xl text-sm font-medium transition-all ${
+                form.currency === "USD"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              USD
+            </button>
+          </div>
+
           <div className="rounded-2xl border border-gray-200 bg-white p-4">
             <span className="text-xs font-medium text-gray-400">
               Presupuesto mensual
             </span>
 
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-2xl font-semibold text-gray-900">$</span>
+            <div className="mt-2 flex min-w-0 items-center gap-3">
+              <span className="shrink-0 whitespace-nowrap text-2xl font-semibold text-gray-900">
+                {getCurrencySymbol(form.currency)}
+              </span>
 
               <input
                 value={form.amount}
@@ -128,7 +164,7 @@ export function BudgetForm({ userId, categories, month, year }: Props) {
                 }
                 placeholder="0"
                 inputMode="decimal"
-                className="w-full bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
+                className="min-w-0 flex-1 bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
               />
             </div>
           </div>
@@ -173,7 +209,11 @@ export function BudgetForm({ userId, categories, month, year }: Props) {
 
             {selectedCategory && (
               <p className="text-xs text-gray-400">
-                Si ya existe un presupuesto para{" "}
+                Si ya existe un presupuesto en{" "}
+                <span className="font-medium text-gray-600">
+                  {form.currency}
+                </span>{" "}
+                para{" "}
                 <span className="font-medium text-gray-600">
                   {selectedCategory.name}
                 </span>{" "}

@@ -10,10 +10,18 @@ export async function POST(request: Request) {
     const year = Number(body.year);
     const userId = body.userId as string;
     const categoryId = body.categoryId as string;
+    const currency = body.currency as "ARS" | "USD";
 
     if (!userId || !categoryId) {
       return NextResponse.json(
         { error: "Faltan datos obligatorios." },
+        { status: 400 }
+      );
+    }
+
+    if (currency !== "ARS" && currency !== "USD") {
+      return NextResponse.json(
+        { error: "Moneda inválida." },
         { status: 400 }
       );
     }
@@ -26,24 +34,19 @@ export async function POST(request: Request) {
     }
 
     if (!month || isNaN(month) || month < 1 || month > 12) {
-      return NextResponse.json(
-        { error: "Mes inválido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Mes inválido." }, { status: 400 });
     }
 
     if (!year || isNaN(year) || year < 1900 || year > 2200) {
-      return NextResponse.json(
-        { error: "Año inválido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Año inválido." }, { status: 400 });
     }
 
     const budget = await prisma.budget.upsert({
       where: {
-        userId_categoryId_month_year: {
+        userId_categoryId_currency_month_year: {
           userId,
           categoryId,
+          currency,
           month,
           year,
         },
@@ -53,6 +56,7 @@ export async function POST(request: Request) {
       },
       create: {
         amount,
+        currency,
         month,
         year,
         userId,

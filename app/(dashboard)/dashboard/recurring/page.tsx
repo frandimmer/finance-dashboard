@@ -5,6 +5,7 @@ import { RecurringForm } from "@/components/dashboard/recurring-form";
 import { DeleteRecurring } from "@/components/dashboard/delete-recurring";
 import { ToggleRecurring } from "@/components/dashboard/toggle-recurring";
 import { GenerateRecurringButton } from "@/components/dashboard/generate-recurring-button";
+import { getCurrencySymbol, type Currency } from "@/lib/finance";
 
 function getCurrentMonthLabel() {
   const now = new Date();
@@ -15,10 +16,16 @@ function getCurrentMonthLabel() {
   });
 }
 
-function formatMoney(amount: number) {
-  return `$ ${amount.toLocaleString("es-AR", {
-    maximumFractionDigits: 0,
-  })}`;
+function formatMoney(amount: number, currency: Currency) {
+  const symbol = getCurrencySymbol(currency);
+
+  return `${amount < 0 ? "-" : ""}${symbol} ${Math.abs(amount).toLocaleString(
+    "es-AR",
+    {
+      minimumFractionDigits: currency === "USD" ? 2 : 0,
+      maximumFractionDigits: currency === "USD" ? 2 : 0,
+    }
+  )}`;
 }
 
 async function getRecurringData(userId: string) {
@@ -50,46 +57,169 @@ async function getRecurringData(userId: string) {
     (recurring) => recurring.isActive
   );
 
-  const monthlyIncome = activeRecurring
-    .filter((recurring) => recurring.type === "income")
-    .reduce((sum, recurring) => sum + recurring.amount, 0);
+  const monthlyTotals = {
+    ARS: {
+      income: 0,
+      expenses: 0,
+      net: 0,
+    },
+    USD: {
+      income: 0,
+      expenses: 0,
+      net: 0,
+    },
+  };
 
-  const monthlyExpenses = activeRecurring
-    .filter((recurring) => recurring.type === "expense")
-    .reduce((sum, recurring) => sum + recurring.amount, 0);
+  activeRecurring.forEach((recurring) => {
+    const currency = recurring.currency as Currency;
+
+    if (recurring.type === "income") {
+      monthlyTotals[currency].income += recurring.amount;
+      monthlyTotals[currency].net += recurring.amount;
+    }
+
+    if (recurring.type === "expense") {
+      monthlyTotals[currency].expenses += recurring.amount;
+      monthlyTotals[currency].net -= recurring.amount;
+    }
+  });
 
   return {
     recurringTransactions,
     categories,
     activeCount: activeRecurring.length,
     inactiveCount: recurringTransactions.length - activeRecurring.length,
-    monthlyIncome,
-    monthlyExpenses,
-    monthlyNet: monthlyIncome - monthlyExpenses,
+    monthlyTotals,
   };
 }
 
 export default async function RecurringPage() {
   const session = await auth();
-  const userId = session!.user!.id!;
+
+  const user = await prisma.user.findUnique({
+    where: {
+      email: session!.user!.email!,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const userId = user!.id;
+
+  const response = await fetch("http://localhost:3000/api/exchange-rate", {
+    cache: "no-store",
+  });
+
+  const { rate } = await response.json();
+
   const data = await getRecurringData(userId);
   const monthLabel = getCurrentMonthLabel();
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Recurrentes</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Creá plantillas para gastos e ingresos que se repiten todos los meses
+            Creá plantillas para gastos e ingresos que se repiten todos los
+            meses en ARS o USD
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <GenerateRecurringButton userId={userId} monthLabel={monthLabel} />
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <GenerateRecurringButton userId={userId} monthLabel={monthLabel} />
 
-          <RecurringForm userId={userId} categories={data.categories} />
+            <RecurringForm userId={userId} categories={data.categories} />
+          </div>
+
+          <div className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500 shadow-sm">
+            USD · $ {rate.toLocaleString("es-AR")}
+          </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="border border-gray-200 bg-white shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Recurrentes ARS
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Ingresos</p>
+                <p className="text-sm font-semibold text-emerald-600">
+                  +{formatMoney(data.monthlyTotals.ARS.income, "ARS")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Gastos</p>
+                <p className="text-sm font-semibold text-red-600">
+                  -{formatMoney(data.monthlyTotals.ARS.expenses, "ARS")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Neto</p>
+                <p
+                  className={`text-sm font-semibold ${
+                    data.monthlyTotals.ARS.net >= 0
+                      ? "text-emerald-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {data.monthlyTotals.ARS.net >= 0 ? "+" : "-"}
+                  {formatMoney(Math.abs(data.monthlyTotals.ARS.net), "ARS")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200 bg-white shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Recurrentes USD
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Ingresos</p>
+                <p className="text-sm font-semibold text-emerald-600">
+                  +{formatMoney(data.monthlyTotals.USD.income, "USD")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Gastos</p>
+                <p className="text-sm font-semibold text-red-600">
+                  -{formatMoney(data.monthlyTotals.USD.expenses, "USD")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Neto</p>
+                <p
+                  className={`text-sm font-semibold ${
+                    data.monthlyTotals.USD.net >= 0
+                      ? "text-emerald-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {data.monthlyTotals.USD.net >= 0 ? "+" : "-"}
+                  {formatMoney(Math.abs(data.monthlyTotals.USD.net), "USD")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="border border-gray-200 bg-white shadow-none">
@@ -110,20 +240,14 @@ export default async function RecurringPage() {
             </div>
 
             <div>
-              <p className="mb-1 text-xs text-gray-400">Gastos mensuales</p>
-              <p className="text-sm font-semibold text-red-600">
-                {formatMoney(data.monthlyExpenses)}
-              </p>
+              <p className="mb-1 text-xs text-gray-400">Monedas activas</p>
+              <p className="text-sm font-semibold text-gray-900">ARS / USD</p>
             </div>
 
             <div>
-              <p className="mb-1 text-xs text-gray-400">Neto recurrente</p>
-              <p
-                className={`text-sm font-semibold ${
-                  data.monthlyNet >= 0 ? "text-emerald-600" : "text-red-600"
-                }`}
-              >
-                {formatMoney(data.monthlyNet)}
+              <p className="mb-1 text-xs text-gray-400">Mes a generar</p>
+              <p className="text-sm font-semibold text-gray-900">
+                {monthLabel}
               </p>
             </div>
           </div>
@@ -155,91 +279,100 @@ export default async function RecurringPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-              {data.recurringTransactions.map((recurring) => (
-                <div
-                  key={recurring.id}
-                  className={`rounded-2xl border bg-white p-4 transition-all duration-200 hover:bg-gray-50/70 ${
-                    recurring.isActive
-                      ? "border-gray-100 hover:border-gray-200"
-                      : "border-gray-100 opacity-60"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-xl">
-                        {recurring.category?.icon || "🔁"}
-                      </div>
+              {data.recurringTransactions.map((recurring) => {
+                const recurringCurrency = recurring.currency as Currency;
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-medium text-gray-900">
-                            {recurring.name}
-                          </p>
-
-                          {!recurring.isActive && (
-                            <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-400">
-                              Pausado
-                            </span>
-                          )}
+                return (
+                  <div
+                    key={recurring.id}
+                    className={`rounded-2xl border bg-white p-4 transition-all duration-200 hover:bg-gray-50/70 ${
+                      recurring.isActive
+                        ? "border-gray-100 hover:border-gray-200"
+                        : "border-gray-100 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-xl">
+                          {recurring.category?.icon || "🔁"}
                         </div>
 
-                        <p className="mt-1 text-xs text-gray-400">
-                          {recurring.category?.name || "Sin categoría"} · Día{" "}
-                          {recurring.dayOfMonth} de cada mes
-                        </p>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-medium text-gray-900">
+                              {recurring.name}
+                            </p>
+
+                            <span className="inline-flex w-fit items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-500">
+                              {recurringCurrency}
+                            </span>
+
+                            {!recurring.isActive && (
+                              <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-400">
+                                Pausado
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-1 text-xs text-gray-400">
+                            {recurring.category?.name || "Sin categoría"} · Día{" "}
+                            {recurring.dayOfMonth} de cada mes
+                          </p>
+                        </div>
+                      </div>
+
+                      <p
+                        className={`shrink-0 text-sm font-semibold ${
+                          recurring.type === "income"
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {recurring.type === "income" ? "+" : "-"}
+                        {formatMoney(recurring.amount, recurringCurrency)}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                      <span className="text-xs text-gray-400">
+                        {recurring.transactions.length > 0
+                          ? `Último generado: ${new Date(
+                              recurring.transactions[0].date
+                            ).toLocaleDateString("es-AR", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}`
+                          : "Aún no generado"}
+                      </span>
+
+                      <div className="flex items-center gap-3">
+                        <ToggleRecurring
+                          id={recurring.id}
+                          userId={userId}
+                          isActive={recurring.isActive}
+                        />
+
+                        <RecurringForm
+                          userId={userId}
+                          categories={data.categories}
+                          recurring={{
+                            id: recurring.id,
+                            name: recurring.name,
+                            amount: recurring.amount,
+                            currency: recurringCurrency,
+                            type: recurring.type,
+                            dayOfMonth: recurring.dayOfMonth,
+                            categoryId: recurring.categoryId,
+                          }}
+                        />
+
+                        <DeleteRecurring id={recurring.id} userId={userId} />
                       </div>
                     </div>
-
-                    <p
-                      className={`shrink-0 text-sm font-semibold ${
-                        recurring.type === "income"
-                          ? "text-emerald-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {recurring.type === "income" ? "+" : "-"}
-                      {formatMoney(recurring.amount)}
-                    </p>
                   </div>
-
-                  <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-                    <span className="text-xs text-gray-400">
-                      {recurring.transactions.length > 0
-                        ? `Último generado: ${new Date(
-                            recurring.transactions[0].date
-                          ).toLocaleDateString("es-AR", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}`
-                        : "Aún no generado"}
-                    </span>
-
-                    <div className="flex items-center gap-3">
-                      <ToggleRecurring
-                        id={recurring.id}
-                        userId={userId}
-                        isActive={recurring.isActive}
-                      />
-
-                      <RecurringForm
-                        userId={userId}
-                        categories={data.categories}
-                        recurring={{
-                          id: recurring.id,
-                          name: recurring.name,
-                          amount: recurring.amount,
-                          type: recurring.type,
-                          dayOfMonth: recurring.dayOfMonth,
-                          categoryId: recurring.categoryId,
-                        }}
-                      />
-
-                      <DeleteRecurring id={recurring.id} userId={userId} />
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

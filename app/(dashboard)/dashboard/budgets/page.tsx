@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BudgetForm } from "@/components/dashboard/budget-form";
 import { DeleteBudget } from "@/components/dashboard/delete-budget";
+import { getCurrencySymbol, type Currency } from "@/lib/finance";
 
 function getCurrentMonth() {
   const now = new Date();
@@ -15,10 +16,16 @@ function getCurrentMonth() {
   };
 }
 
-function formatMoney(amount: number) {
-  return `$ ${amount.toLocaleString("es-AR", {
-    maximumFractionDigits: 0,
-  })}`;
+function formatMoney(amount: number, currency: Currency) {
+  const symbol = getCurrencySymbol(currency);
+
+  return `${amount < 0 ? "-" : ""}${symbol} ${Math.abs(amount).toLocaleString(
+    "es-AR",
+    {
+      minimumFractionDigits: currency === "USD" ? 2 : 0,
+      maximumFractionDigits: currency === "USD" ? 2 : 0,
+    }
+  )}`;
 }
 
 async function getBudgetData(userId: string) {
@@ -57,23 +64,29 @@ async function getBudgetData(userId: string) {
     }),
   ]);
 
-  const spentByCategory = new Map<string, number>();
+  const spentByCategoryAndCurrency = new Map<string, number>();
 
   transactions.forEach((transaction) => {
     if (!transaction.categoryId) return;
 
-    const current = spentByCategory.get(transaction.categoryId) ?? 0;
-    spentByCategory.set(transaction.categoryId, current + transaction.amount);
+    const currency = transaction.currency as Currency;
+    const key = `${transaction.categoryId}-${currency}`;
+    const current = spentByCategoryAndCurrency.get(key) ?? 0;
+
+    spentByCategoryAndCurrency.set(key, current + transaction.amount);
   });
 
   const budgetRows = budgets.map((budget) => {
-    const spent = spentByCategory.get(budget.categoryId) ?? 0;
+    const currency = budget.currency as Currency;
+    const key = `${budget.categoryId}-${currency}`;
+    const spent = spentByCategoryAndCurrency.get(key) ?? 0;
     const remaining = budget.amount - spent;
     const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
 
     return {
       id: budget.id,
       amount: budget.amount,
+      currency,
       spent,
       remaining,
       percentage,
@@ -81,9 +94,25 @@ async function getBudgetData(userId: string) {
     };
   });
 
-  const totalBudget = budgetRows.reduce((sum, budget) => sum + budget.amount, 0);
-  const totalSpent = budgetRows.reduce((sum, budget) => sum + budget.spent, 0);
-  const totalRemaining = totalBudget - totalSpent;
+  const totals = {
+    ARS: {
+      budget: 0,
+      spent: 0,
+      remaining: 0,
+    },
+    USD: {
+      budget: 0,
+      spent: 0,
+      remaining: 0,
+    },
+  };
+
+  budgetRows.forEach((budget) => {
+    totals[budget.currency].budget += budget.amount;
+    totals[budget.currency].spent += budget.spent;
+    totals[budget.currency].remaining += budget.remaining;
+  });
+
   const overBudgetCount = budgetRows.filter(
     (budget) => budget.spent > budget.amount
   ).length;
@@ -93,9 +122,7 @@ async function getBudgetData(userId: string) {
     year: currentMonth.year,
     categories,
     budgets: budgetRows,
-    totalBudget,
-    totalSpent,
-    totalRemaining,
+    totals,
     overBudgetCount,
   };
 }
@@ -114,7 +141,23 @@ function getTextColor(percentage: number) {
 
 export default async function BudgetsPage() {
   const session = await auth();
-  const data = await getBudgetData(session!.user!.id!);
+
+  const user = await prisma.user.findUnique({
+    where: {
+      email: session!.user!.email!,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const response = await fetch("http://localhost:3000/api/exchange-rate", {
+    cache: "no-store",
+  });
+
+  const { rate } = await response.json();
+
+  const data = await getBudgetData(user!.id);
 
   const monthLabel = new Date(data.year, data.month - 1).toLocaleDateString(
     "es-AR",
@@ -126,49 +169,118 @@ export default async function BudgetsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
             Presupuestos
           </h1>
+
           <p className="mt-1 text-sm text-gray-500">
             Controlá cuánto querés gastar por categoría en {monthLabel}
           </p>
         </div>
 
-        <BudgetForm
-          userId={session!.user!.id!}
-          categories={data.categories}
-          month={data.month}
-          year={data.year}
-        />
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <BudgetForm
+            userId={user!.id}
+            categories={data.categories}
+            month={data.month}
+            year={data.year}
+          />
+
+          <div className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500 shadow-sm">
+            USD · $ {rate.toLocaleString("es-AR")}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="border border-gray-200 bg-white shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Resumen ARS
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Presupuestado</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {formatMoney(data.totals.ARS.budget, "ARS")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Gastado</p>
+                <p className="text-sm font-semibold text-red-600">
+                  {formatMoney(data.totals.ARS.spent, "ARS")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Restante</p>
+                <p
+                  className={`text-sm font-semibold ${
+                    data.totals.ARS.remaining >= 0
+                      ? "text-emerald-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {formatMoney(data.totals.ARS.remaining, "ARS")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200 bg-white shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Resumen USD
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Presupuestado</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {formatMoney(data.totals.USD.budget, "USD")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Gastado</p>
+                <p className="text-sm font-semibold text-red-600">
+                  {formatMoney(data.totals.USD.spent, "USD")}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-gray-400">Restante</p>
+                <p
+                  className={`text-sm font-semibold ${
+                    data.totals.USD.remaining >= 0
+                      ? "text-emerald-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {formatMoney(data.totals.USD.remaining, "USD")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="border border-gray-200 bg-white shadow-none">
         <CardContent className="py-4">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>
-              <p className="mb-1 text-xs text-gray-400">Presupuestado</p>
+              <p className="mb-1 text-xs text-gray-400">Presupuestos</p>
               <p className="text-sm font-semibold text-gray-900">
-                {formatMoney(data.totalBudget)}
-              </p>
-            </div>
-
-            <div>
-              <p className="mb-1 text-xs text-gray-400">Gastado</p>
-              <p className="text-sm font-semibold text-red-600">
-                {formatMoney(data.totalSpent)}
-              </p>
-            </div>
-
-            <div>
-              <p className="mb-1 text-xs text-gray-400">Restante</p>
-              <p
-                className={`text-sm font-semibold ${
-                  data.totalRemaining >= 0 ? "text-emerald-600" : "text-red-600"
-                }`}
-              >
-                {formatMoney(data.totalRemaining)}
+                {data.budgets.length}
               </p>
             </div>
 
@@ -176,6 +288,18 @@ export default async function BudgetsPage() {
               <p className="mb-1 text-xs text-gray-400">Excedidos</p>
               <p className="text-sm font-semibold text-gray-900">
                 {data.overBudgetCount}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-1 text-xs text-gray-400">Monedas activas</p>
+              <p className="text-sm font-semibold text-gray-900">ARS / USD</p>
+            </div>
+
+            <div>
+              <p className="mb-1 text-xs text-gray-400">Mes</p>
+              <p className="text-sm font-semibold text-gray-900">
+                {monthLabel}
               </p>
             </div>
           </div>
@@ -202,7 +326,8 @@ export default async function BudgetsPage() {
 
               <p className="mt-2 max-w-sm text-sm text-gray-500">
                 Definí un límite mensual para categorías como Comida,
-                Transporte o Salidas y empezá a controlar mejor tus gastos.
+                Transporte, Salidas o Viajes y empezá a controlar mejor tus
+                gastos por moneda.
               </p>
             </div>
           ) : (
@@ -222,13 +347,19 @@ export default async function BudgetsPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-gray-900">
-                            {budget.category.name}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-medium text-gray-900">
+                              {budget.category.name}
+                            </p>
+
+                            <span className="inline-flex w-fit items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-500">
+                              {budget.currency}
+                            </span>
+                          </div>
 
                           <p className="mt-1 text-xs text-gray-400">
-                            {formatMoney(budget.spent)} de{" "}
-                            {formatMoney(budget.amount)}
+                            {formatMoney(budget.spent, budget.currency)} de{" "}
+                            {formatMoney(budget.amount, budget.currency)}
                           </p>
                         </div>
                       </div>
@@ -265,7 +396,7 @@ export default async function BudgetsPage() {
                               : "font-medium text-red-600"
                           }
                         >
-                          {formatMoney(budget.remaining)}
+                          {formatMoney(budget.remaining, budget.currency)}
                         </span>
                       </div>
                     </div>

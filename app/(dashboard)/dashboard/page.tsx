@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowUpRight,
@@ -11,11 +12,52 @@ import {
 } from "lucide-react";
 import { ExpensesChart } from "@/components/dashboard/expenses-chart";
 import { AnimatedMoney } from "@/components/dashboard/animated-money";
+import { ExchangeRatesCard } from "@/components/dashboard/exchange-rates-card";
 import {
   calculatePercentageChange,
   getCurrencySymbol,
   type Currency,
 } from "@/lib/finance";
+
+type ExchangeRateItem = {
+  name: string;
+  casa: string;
+  buy: number;
+  sell: number;
+  updatedAt: string;
+};
+
+type ExchangeRates = {
+  blue: ExchangeRateItem;
+  mep: ExchangeRateItem;
+  official: ExchangeRateItem;
+};
+
+type CurrencyStats = {
+  income: number;
+  expenses: number;
+  balance: number;
+};
+
+type MonthlyCard =
+  | {
+      title: string;
+      value: number;
+      currency: Currency;
+      icon: typeof Wallet;
+      color: string;
+      footer: string;
+      footerColor: string;
+    }
+  | {
+      title: string;
+      value: number;
+      secondaryValue: number;
+      icon: typeof TrendingUp;
+      color: string;
+      footer: string;
+      footerColor: string;
+    };
 
 function getCurrentMonthRange() {
   const now = new Date();
@@ -64,7 +106,7 @@ function formatTransactionDate(date: Date) {
   });
 }
 
-function emptyCurrencyStats() {
+function emptyCurrencyStats(): Record<Currency, CurrencyStats> {
   return {
     ARS: {
       income: 0,
@@ -103,6 +145,23 @@ function sumTransactionsByCurrency(
   });
 
   return totals;
+}
+
+async function getExchangeRates() {
+  const baseUrl =
+    process.env.NEXTAUTH_URL ?? process.env.AUTH_URL ?? "http://localhost:3000";
+
+  const response = await fetch(`${baseUrl}/api/exchange-rate`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo obtener la cotización del dólar");
+  }
+
+  const data = (await response.json()) as { rates: ExchangeRates };
+
+  return data.rates;
 }
 
 async function getStats(userId: string) {
@@ -196,31 +255,34 @@ async function getMonthlyControlData(userId: string) {
     }),
   ]);
 
-  const totalBudget = {
+  const totalBudget: Record<Currency, number> = {
     ARS: 0,
     USD: 0,
   };
 
-  const totalSpent = {
+  const totalSpent: Record<Currency, number> = {
     ARS: 0,
     USD: 0,
   };
 
-  const recurringExpenses = {
+  const recurringExpenses: Record<Currency, number> = {
     ARS: 0,
     USD: 0,
   };
 
   budgets.forEach((budget) => {
-    totalBudget[budget.currency] += budget.amount;
+    const currency = budget.currency as Currency;
+    totalBudget[currency] += budget.amount;
   });
 
   transactions.forEach((transaction) => {
-    totalSpent[transaction.currency] += transaction.amount;
+    const currency = transaction.currency as Currency;
+    totalSpent[currency] += transaction.amount;
   });
 
   recurringTransactions.forEach((recurring) => {
-    recurringExpenses[recurring.currency] += recurring.amount;
+    const currency = recurring.currency as Currency;
+    recurringExpenses[currency] += recurring.amount;
   });
 
   const budgetUsage = {
@@ -358,35 +420,44 @@ async function getTopCategories(userId: string) {
 export default async function DashboardPage() {
   const session = await auth();
 
+  if (!session?.user?.email) {
+    redirect("/login");
+  }
+
   const user = await prisma.user.findUnique({
     where: {
-      email: session!.user!.email!,
+      email: session.user.email,
     },
     select: {
       id: true,
     },
   });
 
-  const response = await fetch("http://localhost:3000/api/exchange-rate", {
-    cache: "no-store",
-  });
+  if (!user) {
+    redirect("/login");
+  }
 
-  const { rate } = await response.json();
+  const [
+    rates,
+    stats,
+    chartData,
+    recentTransactions,
+    topCategories,
+    monthlyControl,
+  ] = await Promise.all([
+    getExchangeRates(),
+    getStats(user.id),
+    getChartData(user.id),
+    getRecentTransactions(user.id),
+    getTopCategories(user.id),
+    getMonthlyControlData(user.id),
+  ]);
 
-  const [stats, chartData, recentTransactions, topCategories, monthlyControl] =
-    await Promise.all([
-      getStats(user!.id),
-      getChartData(user!.id),
-      getRecentTransactions(user!.id),
-      getTopCategories(user!.id),
-      getMonthlyControlData(user!.id),
-    ]);
-
-  const monthlyCards = [
+  const monthlyCards: MonthlyCard[] = [
     {
       title: "Resultado ARS del mes",
       value: stats.thisMonth.ARS.balance,
-      currency: "ARS" as Currency,
+      currency: "ARS",
       icon: Wallet,
       color:
         stats.thisMonth.ARS.balance >= 0 ? "text-emerald-600" : "text-red-600",
@@ -400,7 +471,7 @@ export default async function DashboardPage() {
     {
       title: "Resultado USD del mes",
       value: stats.thisMonth.USD.balance,
-      currency: "USD" as Currency,
+      currency: "USD",
       icon: Wallet,
       color:
         stats.thisMonth.USD.balance >= 0 ? "text-emerald-600" : "text-red-600",
@@ -449,9 +520,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500 shadow-sm">
-          USD · $ {rate.toLocaleString("es-AR")}
-        </div>
+        <ExchangeRatesCard rates={rates} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -585,46 +654,50 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-  {monthlyCards.map((card) => (
-    <Card
-      key={card.title}
-      className="border border-gray-200 bg-white shadow-none transition-all duration-200 hover:border-gray-300 hover:bg-gray-50/60"
-    >
-      <CardContent className="p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-gray-500">{card.title}</p>
-          <card.icon className={`h-4 w-4 shrink-0 ${card.color}`} />
-        </div>
+        {monthlyCards.map((card) => (
+          <Card
+            key={card.title}
+            className="border border-gray-200 bg-white shadow-none transition-all duration-200 hover:border-gray-300 hover:bg-gray-50/60"
+          >
+            <CardContent className="p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-gray-500">
+                  {card.title}
+                </p>
+                <card.icon className={`h-4 w-4 shrink-0 ${card.color}`} />
+              </div>
 
-        {"currency" in card ? (
-          <p className={`text-xl font-bold ${card.color}`}>
-            <AnimatedMoney
-              value={Math.abs(card.value)}
-              prefix={
-                card.value < 0
-                  ? `- ${getCurrencySymbol(card.currency)} `
-                  : `${getCurrencySymbol(card.currency)} `
-              }
-            />
-          </p>
-        ) : (
-          <div className="flex flex-col gap-1">
-            <p className={`text-xl font-bold ${card.color}`}>
-              {formatShortMoney(card.value, "ARS")}
-            </p>
-            <p className={`text-xl font-bold ${card.color}`}>
-              {formatShortMoney(card.secondaryValue, "USD")}
-            </p>
-          </div>
-        )}
+              {"currency" in card ? (
+                <p className={`text-xl font-bold ${card.color}`}>
+                  <AnimatedMoney
+                    value={Math.abs(card.value)}
+                    prefix={
+                      card.value < 0
+                        ? `- ${getCurrencySymbol(card.currency)} `
+                        : `${getCurrencySymbol(card.currency)} `
+                    }
+                  />
+                </p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  <p className={`text-xl font-bold ${card.color}`}>
+                    {formatShortMoney(card.value, "ARS")}
+                  </p>
+                  <p className={`text-xl font-bold ${card.color}`}>
+                    {formatShortMoney(card.secondaryValue, "USD")}
+                  </p>
+                </div>
+              )}
 
-        <p className={`mt-2 line-clamp-1 text-xs font-medium ${card.footerColor}`}>
-          {card.footer}
-        </p>
-      </CardContent>
-    </Card>
-  ))}
-</div>
+              <p
+                className={`mt-2 line-clamp-1 text-xs font-medium ${card.footerColor}`}
+              >
+                {card.footer}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       <Card className="border border-gray-200 bg-white shadow-none">
         <CardContent className="py-4">
@@ -738,10 +811,18 @@ export default async function DashboardPage() {
 
                 <div className="shrink-0 text-right">
                   <p className="text-sm font-semibold text-red-600">
-                    -{formatShortMoney(monthlyControl.recurringExpenses.ARS, "ARS")}
+                    -
+                    {formatShortMoney(
+                      monthlyControl.recurringExpenses.ARS,
+                      "ARS"
+                    )}
                   </p>
                   <p className="text-sm font-semibold text-red-600">
-                    -{formatShortMoney(monthlyControl.recurringExpenses.USD, "USD")}
+                    -
+                    {formatShortMoney(
+                      monthlyControl.recurringExpenses.USD,
+                      "USD"
+                    )}
                   </p>
                 </div>
               </div>

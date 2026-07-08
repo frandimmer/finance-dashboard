@@ -107,25 +107,27 @@ export function EditTransaction({ transaction, categories }: Props) {
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <button className="text-gray-300 transition-colors hover:text-blue-500">
+        <button className="text-gray-300 transition-colors hover:text-blue-500 dark:text-gray-600 dark:hover:text-blue-400">
           <Pencil className="h-4 w-4" />
         </button>
       </SheetTrigger>
 
-      <SheetContent className="w-full sm:max-w-md">
+      <SheetContent className="w-full border-gray-200 bg-white text-gray-950 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50 sm:max-w-md">
         <SheetHeader className="px-6 pt-6">
-          <SheetTitle>Editar transacción</SheetTitle>
+          <SheetTitle className="text-gray-950 dark:text-gray-50">
+            Editar transacción
+          </SheetTitle>
         </SheetHeader>
 
         <div className="mt-6 flex flex-col gap-5 px-6">
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1 dark:bg-gray-900">
             <button
               type="button"
               onClick={() => setForm({ ...form, type: "expense" })}
               className={`h-10 rounded-xl text-sm font-medium transition-all ${
                 form.type === "expense"
-                  ? "bg-white text-red-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white text-red-600 shadow-sm dark:bg-gray-800 dark:text-red-400"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
               Gasto
@@ -136,22 +138,22 @@ export function EditTransaction({ transaction, categories }: Props) {
               onClick={() => setForm({ ...form, type: "income" })}
               className={`h-10 rounded-xl text-sm font-medium transition-all ${
                 form.type === "income"
-                  ? "bg-white text-emerald-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white text-emerald-600 shadow-sm dark:bg-gray-800 dark:text-emerald-400"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
               Ingreso
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1 dark:bg-gray-900">
             <button
               type="button"
               onClick={() => setForm({ ...form, currency: "ARS" })}
               className={`h-10 rounded-xl text-sm font-medium transition-all ${
                 form.currency === "ARS"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-50"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
               ARS
@@ -162,37 +164,45 @@ export function EditTransaction({ transaction, categories }: Props) {
               onClick={() => setForm({ ...form, currency: "USD" })}
               className={`h-10 rounded-xl text-sm font-medium transition-all ${
                 form.currency === "USD"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-50"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
               USD
             </button>
           </div>
 
-          <div className="mt-2 flex min-w-0 items-center gap-3">
-  <span
-    className={`shrink-0 whitespace-nowrap text-2xl font-semibold ${
-      form.type === "income" ? "text-emerald-600" : "text-red-600"
-    }`}
-  >
-    {form.type === "income" ? "+" : "-"}
-    {getCurrencySymbol(form.currency)}
-  </span>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+              Monto
+            </span>
 
-  <input
-    value={form.amount}
-    onChange={(event) =>
-      setForm({ ...form, amount: event.target.value })
-    }
-    placeholder="0"
-    inputMode="decimal"
-    className="min-w-0 flex-1 bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300"
-  />
-</div>
+            <div className="mt-2 flex min-w-0 items-center gap-3">
+              <span
+                className={`shrink-0 whitespace-nowrap text-2xl font-semibold ${
+                  form.type === "income"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {form.type === "income" ? "+" : "-"}
+                {getCurrencySymbol(form.currency)}
+              </span>
+
+              <input
+                value={form.amount}
+                onChange={(event) =>
+                  setForm({ ...form, amount: event.target.value })
+                }
+                placeholder="0"
+                inputMode="decimal"
+                className="min-w-0 flex-1 bg-transparent text-3xl font-semibold text-gray-900 outline-none placeholder:text-gray-300 dark:text-gray-50 dark:placeholder:text-gray-700"
+              />
+            </div>
+          </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-gray-500">
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
               Descripción
             </span>
 
@@ -202,12 +212,14 @@ export function EditTransaction({ transaction, categories }: Props) {
               onChange={(event) =>
                 setForm({ ...form, description: event.target.value })
               }
-              className="h-11 rounded-xl"
+              className="h-11 rounded-xl border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600"
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-gray-500">Fecha</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Fecha
+            </span>
 
             <Input
               type="date"
@@ -215,22 +227,22 @@ export function EditTransaction({ transaction, categories }: Props) {
               onChange={(event) =>
                 setForm({ ...form, date: event.target.value })
               }
-              className="h-11 rounded-xl"
+              className="h-11 rounded-xl border-gray-200 bg-white text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50"
             />
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-sm font-medium text-gray-500">
-              Categoría (opcional)
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Categoría opcional
             </span>
 
             {categories.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm text-gray-500">
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   No tenés categorías creadas.{" "}
                   <Link
                     href="/dashboard/categories"
-                    className="font-medium text-gray-900 hover:underline"
+                    className="font-medium text-gray-900 hover:underline dark:text-gray-100"
                   >
                     Creá una acá
                   </Link>
@@ -238,7 +250,7 @@ export function EditTransaction({ transaction, categories }: Props) {
                 </p>
               </div>
             ) : (
-              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50/60 p-3">
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-900/70">
                 {categories.map((category) => (
                   <button
                     key={category.id}
@@ -252,8 +264,8 @@ export function EditTransaction({ transaction, categories }: Props) {
                     }
                     className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
                       form.categoryId === category.id
-                        ? "border-gray-900 bg-gray-900 text-white"
-                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        ? "border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-950"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400 dark:hover:border-gray-700 dark:hover:text-gray-200"
                     }`}
                   >
                     {category.icon && <span>{category.icon}</span>}
@@ -265,8 +277,10 @@ export function EditTransaction({ transaction, categories }: Props) {
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
-              <p className="text-sm font-medium text-red-600">{error}</p>
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 dark:border-red-500/20 dark:bg-red-500/10">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                {error}
+              </p>
             </div>
           )}
 

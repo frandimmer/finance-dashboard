@@ -61,10 +61,10 @@ export function RegisterRecurringButton({
       type="button"
       onClick={handleRegister}
       disabled={loading || disabled}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
         registered
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-gray-200 bg-white text-gray-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400"
+          : "border-gray-200 bg-white text-gray-600 shadow-sm hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
       }`}
     >
       {loading ? (

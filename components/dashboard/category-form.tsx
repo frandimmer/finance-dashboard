@@ -113,7 +113,7 @@ export function CategoryForm({ userId }: Props) {
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button className="gap-2">
+        <Button className="gap-2  dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700">
           <Plus className="h-4 w-4" />
           Nueva categoría
         </Button>

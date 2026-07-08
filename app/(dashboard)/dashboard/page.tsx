@@ -447,7 +447,7 @@ export default async function DashboardPage() {
       ).toFixed(1)}% · USD ${
         stats.usdIncomeChange >= 0 ? "▲" : "▼"
       } ${Math.abs(stats.usdIncomeChange).toFixed(1)}%`,
-      footerColor: "text-gray-500",
+      footerColor: "text-gray-500 dark:text-gray-400",
     },
     {
       title: "Gastos del mes",
@@ -460,7 +460,7 @@ export default async function DashboardPage() {
       ).toFixed(1)}% · USD ${
         stats.usdExpensesChange >= 0 ? "▲" : "▼"
       } ${Math.abs(stats.usdExpensesChange).toFixed(1)}%`,
-      footerColor: "text-gray-500",
+      footerColor: "text-gray-500 dark:text-gray-400",
     },
   ];
 
@@ -468,10 +468,10 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-950">
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-gray-50">
             Dashboard
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Tu panorama financiero en ARS y USD, claro y separado.
           </p>
         </div>
@@ -480,7 +480,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card className="overflow-hidden border border-gray-200 bg-white shadow-none">
+        <Card className="overflow-hidden border border-gray-200 bg-white shadow-none transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900">
           <CardContent className="p-0">
             <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -488,14 +488,14 @@ export default async function DashboardPage() {
                   <div
                     className={`flex h-9 w-9 items-center justify-center rounded-2xl border ${
                       stats.total.ARS.balance >= 0
-                        ? "border-emerald-100 bg-emerald-50 text-emerald-600"
-                        : "border-red-100 bg-red-50 text-red-600"
+                        ? "border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400"
+                        : "border-red-100 bg-red-50 text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400"
                     }`}
                   >
                     <Wallet className="h-4 w-4" />
                   </div>
 
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Balance total ARS
                   </p>
                 </div>
@@ -503,8 +503,8 @@ export default async function DashboardPage() {
                 <p
                   className={`text-3xl font-bold tracking-tight sm:text-4xl ${
                     stats.total.ARS.balance >= 0
-                      ? "text-emerald-600"
-                      : "text-red-600"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
                   }`}
                 >
                   <AnimatedMoney
@@ -513,29 +513,35 @@ export default async function DashboardPage() {
                   />
                 </p>
 
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                   Saldo histórico real en pesos.
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:min-w-80">
+              <div className="grid grid-cols-3 gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:min-w-80 dark:border-gray-800 dark:bg-gray-950/60">
                 <div>
-                  <p className="mb-1 text-xs text-gray-400">Ingresos</p>
-                  <p className="text-sm font-semibold text-emerald-600">
+                  <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                    Ingresos
+                  </p>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                     {formatShortMoney(stats.total.ARS.income, "ARS")}
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1 text-xs text-gray-400">Gastos</p>
-                  <p className="text-sm font-semibold text-red-600">
+                  <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                    Gastos
+                  </p>
+                  <p className="text-sm font-semibold text-red-600 dark:text-red-400">
                     {formatShortMoney(stats.total.ARS.expenses, "ARS")}
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1 text-xs text-gray-400">Mov.</p>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                    Mov.
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {stats.totalMovements}
                   </p>
                 </div>
@@ -544,7 +550,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden border border-gray-200 bg-white shadow-none">
+        <Card className="overflow-hidden border border-gray-200 bg-white shadow-none transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900">
           <CardContent className="p-0">
             <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -552,14 +558,14 @@ export default async function DashboardPage() {
                   <div
                     className={`flex h-9 w-9 items-center justify-center rounded-2xl border ${
                       stats.total.USD.balance >= 0
-                        ? "border-emerald-100 bg-emerald-50 text-emerald-600"
-                        : "border-red-100 bg-red-50 text-red-600"
+                        ? "border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400"
+                        : "border-red-100 bg-red-50 text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400"
                     }`}
                   >
                     <Wallet className="h-4 w-4" />
                   </div>
 
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Balance total USD
                   </p>
                 </div>
@@ -567,8 +573,8 @@ export default async function DashboardPage() {
                 <p
                   className={`text-3xl font-bold tracking-tight sm:text-4xl ${
                     stats.total.USD.balance >= 0
-                      ? "text-emerald-600"
-                      : "text-red-600"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
                   }`}
                 >
                   <AnimatedMoney
@@ -577,29 +583,35 @@ export default async function DashboardPage() {
                   />
                 </p>
 
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                   Saldo histórico real en dólares.
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:min-w-80">
+              <div className="grid grid-cols-3 gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:min-w-80 dark:border-gray-800 dark:bg-gray-950/60">
                 <div>
-                  <p className="mb-1 text-xs text-gray-400">Ingresos</p>
-                  <p className="text-sm font-semibold text-emerald-600">
+                  <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                    Ingresos
+                  </p>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                     {formatShortMoney(stats.total.USD.income, "USD")}
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1 text-xs text-gray-400">Gastos</p>
-                  <p className="text-sm font-semibold text-red-600">
+                  <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                    Gastos
+                  </p>
+                  <p className="text-sm font-semibold text-red-600 dark:text-red-400">
                     {formatShortMoney(stats.total.USD.expenses, "USD")}
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1 text-xs text-gray-400">Mov.</p>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                    Mov.
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {stats.totalMovements}
                   </p>
                 </div>
@@ -613,11 +625,11 @@ export default async function DashboardPage() {
         {monthlyCards.map((card) => (
           <Card
             key={card.title}
-            className="border border-gray-200 bg-white shadow-none transition-all duration-200 hover:border-gray-300 hover:bg-gray-50/60"
+            className="border border-gray-200 bg-white shadow-none transition-all duration-200 hover:border-gray-300 hover:bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:bg-gray-800/60"
           >
             <CardContent className="p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-gray-500">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   {card.title}
                 </p>
                 <card.icon className={`h-4 w-4 shrink-0 ${card.color}`} />
@@ -655,33 +667,41 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <Card className="border border-gray-200 bg-white shadow-none">
+      <Card className="border border-gray-200 bg-white shadow-none transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900">
         <CardContent className="py-4">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>
-              <p className="mb-1 text-xs text-gray-400">Movimientos del mes</p>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                Movimientos del mes
+              </p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {stats.movements}
               </p>
             </div>
 
             <div>
-              <p className="mb-1 text-xs text-gray-400">Categorías con gasto</p>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                Categorías con gasto
+              </p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {topCategories.length}
               </p>
             </div>
 
             <div>
-              <p className="mb-1 text-xs text-gray-400">Monedas activas</p>
-              <p className="text-sm font-semibold text-gray-900">ARS / USD</p>
+              <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                Monedas activas
+              </p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                ARS / USD
+              </p>
             </div>
 
             <div>
-              <p className="mb-1 text-xs text-gray-400">
+              <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
                 Últimos movimientos
               </p>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {recentTransactions.length}
               </p>
             </div>
@@ -690,25 +710,27 @@ export default async function DashboardPage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <Card className="min-w-0 border border-gray-200 bg-white shadow-none xl:col-span-2">
+        <Card className="min-w-0 border border-gray-200 bg-white shadow-none transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900 xl:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
               Últimos 6 meses en ARS
             </CardTitle>
           </CardHeader>
 
           <CardContent className="min-w-0">
             {chartData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-14 text-center">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white">
-                  <span className="text-lg text-gray-400">—</span>
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-14 text-center dark:border-gray-800 dark:bg-gray-950/60">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+                  <span className="text-lg text-gray-400 dark:text-gray-500">
+                    —
+                  </span>
                 </div>
 
-                <h3 className="text-sm font-semibold text-gray-900">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Todavía no hay datos suficientes en ARS
                 </h3>
 
-                <p className="mt-2 max-w-sm text-sm text-gray-500">
+                <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
                   Cuando registres movimientos en pesos de varios meses, vas a
                   poder ver tu evolución de ingresos y gastos.
                 </p>
@@ -721,22 +743,22 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-200 bg-white shadow-none">
+        <Card className="border border-gray-200 bg-white shadow-none transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
               Top gastos
             </CardTitle>
 
-            <Tag className="h-4 w-4 text-gray-400" />
+            <Tag className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           </CardHeader>
 
           <CardContent>
             {topCategories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-12 text-center">
-                <p className="text-sm font-medium text-gray-900">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-12 text-center dark:border-gray-800 dark:bg-gray-950/60">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Sin gastos categorizados
                 </p>
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                   Cuando cargues gastos, aparecerán acá tus categorías
                   principales.
                 </p>
@@ -746,18 +768,18 @@ export default async function DashboardPage() {
                 {topCategories.map((category) => (
                   <div
                     key={`${category.name}-${category.currency}`}
-                    className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-4 py-3 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50/70"
+                    className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-4 py-3 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950/40 dark:hover:border-gray-700 dark:hover:bg-gray-800/60"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-lg">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-lg dark:border-gray-800 dark:bg-gray-900">
                         {category.icon || "📁"}
                       </div>
 
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-900">
+                        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                           {category.name}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
                           {category.count === 1
                             ? `1 movimiento · ${category.currency}`
                             : `${category.count} movimientos · ${category.currency}`}
@@ -765,7 +787,7 @@ export default async function DashboardPage() {
                       </div>
                     </div>
 
-                    <p className="shrink-0 text-sm font-semibold text-red-600">
+                    <p className="shrink-0 text-sm font-semibold text-red-600 dark:text-red-400">
                       -{formatShortMoney(category.amount, category.currency)}
                     </p>
                   </div>
@@ -776,22 +798,22 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card className="border border-gray-200 bg-white shadow-none">
+      <Card className="border border-gray-200 bg-white shadow-none transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-medium text-gray-500">
+          <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
             Últimos movimientos
           </CardTitle>
 
-          <Receipt className="h-4 w-4 text-gray-400" />
+          <Receipt className="h-4 w-4 text-gray-400 dark:text-gray-500" />
         </CardHeader>
 
         <CardContent>
           {recentTransactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-12 text-center">
-              <p className="text-sm font-medium text-gray-900">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-12 text-center dark:border-gray-800 dark:bg-gray-950/60">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 Todavía no hay movimientos
               </p>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 Creá tu primera transacción para empezar a ver actividad
                 reciente.
               </p>
@@ -804,14 +826,14 @@ export default async function DashboardPage() {
                 return (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-4 py-3 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50/70"
+                    className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-4 py-3 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950/40 dark:hover:border-gray-700 dark:hover:bg-gray-800/60"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
                           transaction.type === "income"
-                            ? "border-emerald-100 bg-emerald-50 text-emerald-600"
-                            : "border-red-100 bg-red-50 text-red-600"
+                            ? "border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400"
+                            : "border-red-100 bg-red-50 text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400"
                         }`}
                       >
                         <ArrowUpRight
@@ -822,10 +844,10 @@ export default async function DashboardPage() {
                       </div>
 
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-900">
+                        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                           {transaction.description || "Sin descripción"}
                         </p>
-                        <p className="mt-1 text-xs text-gray-400">
+                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                           {transaction.category?.name || "Sin categoría"} ·{" "}
                           {transactionCurrency} ·{" "}
                           {formatTransactionDate(transaction.date)}
@@ -836,8 +858,8 @@ export default async function DashboardPage() {
                     <p
                       className={`shrink-0 text-sm font-semibold ${
                         transaction.type === "income"
-                          ? "text-emerald-600"
-                          : "text-red-600"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-red-600 dark:text-red-400"
                       }`}
                     >
                       {transaction.type === "income" ? "+" : "-"}

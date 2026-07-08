@@ -29,7 +29,9 @@ function FilterField({
 }) {
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      <span className="text-xs font-medium text-gray-400">{label}</span>
+      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+        {label}
+      </span>
       {children}
     </div>
   );
@@ -51,7 +53,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-11 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 [&>span]:truncate">
+      <SelectTrigger className="h-11 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50 dark:hover:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-800 [&>span]:truncate">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
 
@@ -59,13 +61,13 @@ function FilterSelect({
         position="popper"
         align="start"
         sideOffset={2}
-        className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] rounded-xl border-gray-200 bg-white shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
+        className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] rounded-xl border border-gray-200 bg-white text-gray-900 shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
       >
         {options.map((option) => (
           <SelectItem
             key={option.value}
             value={option.value}
-            className="cursor-pointer rounded-lg text-sm"
+            className="cursor-pointer rounded-lg text-sm text-gray-700 focus:bg-gray-100 focus:text-gray-900 dark:text-gray-200 dark:focus:bg-gray-800 dark:focus:text-gray-50"
           >
             {option.label}
           </SelectItem>
@@ -206,7 +208,7 @@ export function TransactionFilters({ categories }: Props) {
   }
 
   const inputClass =
-    "h-11 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm outline-none transition-all hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100";
+    "h-11 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:hover:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-800";
 
   const filtersContent = (
     <>
@@ -259,7 +261,7 @@ export function TransactionFilters({ categories }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="hidden md:grid md:grid-cols-6 gap-3">
+      <div className="hidden gap-3 md:grid md:grid-cols-6">
         <FilterField label="Buscar">
           <input
             value={search}
@@ -285,13 +287,13 @@ export function TransactionFilters({ categories }: Props) {
         <button
           type="button"
           onClick={() => setMobileFiltersOpen((open) => !open)}
-          className="flex h-11 min-h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-colors duration-200 hover:bg-gray-50"
+          className="flex h-11 min-h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-colors duration-200 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800"
         >
           <span className="flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-gray-400" />
+            <SlidersHorizontal className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             Filtros
             {activeFiltersCount > 0 && (
-              <span className="rounded-full bg-gray-900 px-2 py-0.5 text-xs font-semibold text-white">
+              <span className="rounded-full bg-gray-900 px-2 py-0.5 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-950">
                 {activeFiltersCount}
               </span>
             )}
@@ -307,7 +309,7 @@ export function TransactionFilters({ categories }: Props) {
         >
           <div className="overflow-hidden">
             <div
-              className={`grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-transform duration-300 ease-out ${
+              className={`grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-transform duration-300 ease-out dark:border-gray-800 dark:bg-gray-900 ${
                 mobileFiltersOpen
                   ? "translate-y-0 scale-100"
                   : "-translate-y-2 scale-[0.98]"
@@ -323,7 +325,7 @@ export function TransactionFilters({ categories }: Props) {
         <div className="flex justify-end">
           <button
             onClick={clearFilters}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
           >
             <X className="h-3.5 w-3.5" />
             Limpiar filtros

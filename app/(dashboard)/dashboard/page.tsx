@@ -39,6 +39,12 @@ type CurrencyStats = {
   balance: number;
 };
 
+type TransactionSummary = {
+  amount: number;
+  type: string;
+  currency: Currency;
+};
+
 type MonthlyCard =
   | {
       title: string;
@@ -121,13 +127,7 @@ function emptyCurrencyStats(): Record<Currency, CurrencyStats> {
   };
 }
 
-function sumTransactionsByCurrency(
-  transactions: {
-    amount: number;
-    type: string;
-    currency: Currency;
-  }[]
-) {
+function sumTransactionsByCurrency(transactions: TransactionSummary[]) {
   const totals = emptyCurrencyStats();
 
   transactions.forEach((transaction) => {
@@ -136,6 +136,7 @@ function sumTransactionsByCurrency(
     if (transaction.type === "income") {
       totals[currency].income += transaction.amount;
       totals[currency].balance += transaction.amount;
+      return;
     }
 
     if (transaction.type === "expense") {
@@ -177,6 +178,11 @@ async function getStats(userId: string) {
           lt: currentMonth.end,
         },
       },
+      select: {
+        amount: true,
+        type: true,
+        currency: true,
+      },
     }),
     prisma.transaction.findMany({
       where: {
@@ -186,10 +192,20 @@ async function getStats(userId: string) {
           lt: previousMonth.end,
         },
       },
+      select: {
+        amount: true,
+        type: true,
+        currency: true,
+      },
     }),
     prisma.transaction.findMany({
       where: {
         userId,
+      },
+      select: {
+        amount: true,
+        type: true,
+        currency: true,
       },
     }),
   ]);
@@ -225,86 +241,6 @@ async function getStats(userId: string) {
   };
 }
 
-async function getMonthlyControlData(userId: string) {
-  const currentMonth = getCurrentMonthRange();
-
-  const [budgets, transactions, recurringTransactions] = await Promise.all([
-    prisma.budget.findMany({
-      where: {
-        userId,
-        month: currentMonth.start.getMonth() + 1,
-        year: currentMonth.start.getFullYear(),
-      },
-    }),
-    prisma.transaction.findMany({
-      where: {
-        userId,
-        type: "expense",
-        date: {
-          gte: currentMonth.start,
-          lt: currentMonth.end,
-        },
-      },
-    }),
-    prisma.recurringTransaction.findMany({
-      where: {
-        userId,
-        isActive: true,
-        type: "expense",
-      },
-    }),
-  ]);
-
-  const totalBudget: Record<Currency, number> = {
-    ARS: 0,
-    USD: 0,
-  };
-
-  const totalSpent: Record<Currency, number> = {
-    ARS: 0,
-    USD: 0,
-  };
-
-  const recurringExpenses: Record<Currency, number> = {
-    ARS: 0,
-    USD: 0,
-  };
-
-  budgets.forEach((budget) => {
-    const currency = budget.currency as Currency;
-    totalBudget[currency] += budget.amount;
-  });
-
-  transactions.forEach((transaction) => {
-    const currency = transaction.currency as Currency;
-    totalSpent[currency] += transaction.amount;
-  });
-
-  recurringTransactions.forEach((recurring) => {
-    const currency = recurring.currency as Currency;
-    recurringExpenses[currency] += recurring.amount;
-  });
-
-  const budgetUsage = {
-    ARS:
-      totalBudget.ARS > 0
-        ? Math.round((totalSpent.ARS / totalBudget.ARS) * 100)
-        : 0,
-    USD:
-      totalBudget.USD > 0
-        ? Math.round((totalSpent.USD / totalBudget.USD) * 100)
-        : 0,
-  };
-
-  return {
-    totalBudget,
-    totalSpent,
-    recurringExpenses,
-    recurringCount: recurringTransactions.length,
-    budgetUsage,
-  };
-}
-
 async function getChartData(userId: string) {
   const months = Array.from({ length: 6 }, (_, index) => {
     const date = new Date();
@@ -326,6 +262,10 @@ async function getChartData(userId: string) {
             gte: firstDay,
             lt: lastDay,
           },
+        },
+        select: {
+          amount: true,
+          type: true,
         },
       });
 
@@ -353,9 +293,22 @@ async function getChartData(userId: string) {
 
 async function getRecentTransactions(userId: string) {
   return prisma.transaction.findMany({
-    where: { userId },
-    include: {
-      category: true,
+    where: {
+      userId,
+    },
+    select: {
+      id: true,
+      amount: true,
+      description: true,
+      type: true,
+      currency: true,
+      date: true,
+      category: {
+        select: {
+          name: true,
+          icon: true,
+        },
+      },
     },
     orderBy: {
       date: "desc",
@@ -376,8 +329,16 @@ async function getTopCategories(userId: string) {
         lt: currentMonth.end,
       },
     },
-    include: {
-      category: true,
+    select: {
+      amount: true,
+      currency: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          icon: true,
+        },
+      },
     },
   });
 
@@ -437,21 +398,14 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [
-    rates,
-    stats,
-    chartData,
-    recentTransactions,
-    topCategories,
-    monthlyControl,
-  ] = await Promise.all([
-    getExchangeRates(),
-    getStats(user.id),
-    getChartData(user.id),
-    getRecentTransactions(user.id),
-    getTopCategories(user.id),
-    getMonthlyControlData(user.id),
-  ]);
+  const [rates, stats, chartData, recentTransactions, topCategories] =
+    await Promise.all([
+      getExchangeRates(),
+      getStats(user.id),
+      getChartData(user.id),
+      getRecentTransactions(user.id),
+      getTopCategories(user.id),
+    ]);
 
   const monthlyCards: MonthlyCard[] = [
     {
@@ -514,9 +468,11 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-950">
+            Dashboard
+          </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Resumen financiero con saldos separados en ARS y USD
+            Tu panorama financiero en ARS y USD, claro y separado.
           </p>
         </div>
 
@@ -545,7 +501,7 @@ export default async function DashboardPage() {
                 </div>
 
                 <p
-                  className={`text-3xl font-bold sm:text-4xl ${
+                  className={`text-3xl font-bold tracking-tight sm:text-4xl ${
                     stats.total.ARS.balance >= 0
                       ? "text-emerald-600"
                       : "text-red-600"
@@ -558,7 +514,7 @@ export default async function DashboardPage() {
                 </p>
 
                 <p className="mt-2 text-sm text-gray-500">
-                  Saldo histórico real en pesos
+                  Saldo histórico real en pesos.
                 </p>
               </div>
 
@@ -609,7 +565,7 @@ export default async function DashboardPage() {
                 </div>
 
                 <p
-                  className={`text-3xl font-bold sm:text-4xl ${
+                  className={`text-3xl font-bold tracking-tight sm:text-4xl ${
                     stats.total.USD.balance >= 0
                       ? "text-emerald-600"
                       : "text-red-600"
@@ -622,7 +578,7 @@ export default async function DashboardPage() {
                 </p>
 
                 <p className="mt-2 text-sm text-gray-500">
-                  Saldo histórico real en dólares
+                  Saldo histórico real en dólares.
                 </p>
               </div>
 
@@ -733,117 +689,15 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200 bg-white shadow-none">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-gray-500">
-            Control mensual
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50/70">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Presupuesto usado ARS
-                  </p>
-                  <p className="mt-1 text-xs text-gray-400">
-                    {monthlyControl.totalBudget.ARS > 0
-                      ? `${formatShortMoney(
-                          monthlyControl.totalSpent.ARS,
-                          "ARS"
-                        )} de ${formatShortMoney(
-                          monthlyControl.totalBudget.ARS,
-                          "ARS"
-                        )}`
-                      : "Todavía no definiste presupuestos en ARS para este mes"}
-                  </p>
-                </div>
-
-                <p
-                  className={`shrink-0 text-sm font-semibold ${
-                    monthlyControl.budgetUsage.ARS >= 100
-                      ? "text-red-600"
-                      : monthlyControl.budgetUsage.ARS >= 80
-                      ? "text-amber-600"
-                      : "text-emerald-600"
-                  }`}
-                >
-                  {monthlyControl.totalBudget.ARS > 0
-                    ? `${monthlyControl.budgetUsage.ARS}%`
-                    : "—"}
-                </p>
-              </div>
-
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className={`h-full rounded-full ${
-                    monthlyControl.budgetUsage.ARS >= 100
-                      ? "bg-red-500"
-                      : monthlyControl.budgetUsage.ARS >= 80
-                      ? "bg-amber-500"
-                      : "bg-emerald-500"
-                  }`}
-                  style={{
-                    width: `${Math.min(monthlyControl.budgetUsage.ARS, 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50/70">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Gastos recurrentes activos
-                  </p>
-                  <p className="mt-1 text-xs text-gray-400">
-                    {monthlyControl.recurringCount > 0
-                      ? `${monthlyControl.recurringCount} ${
-                          monthlyControl.recurringCount === 1
-                            ? "plantilla activa"
-                            : "plantillas activas"
-                        }`
-                      : "No tenés gastos recurrentes activos"}
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-semibold text-red-600">
-                    -
-                    {formatShortMoney(
-                      monthlyControl.recurringExpenses.ARS,
-                      "ARS"
-                    )}
-                  </p>
-                  <p className="text-sm font-semibold text-red-600">
-                    -
-                    {formatShortMoney(
-                      monthlyControl.recurringExpenses.USD,
-                      "USD"
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <p className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                Monto mensual estimado si generás todos los recurrentes activos.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <Card className="border border-gray-200 bg-white shadow-none xl:col-span-2">
+        <Card className="min-w-0 border border-gray-200 bg-white shadow-none xl:col-span-2">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-500">
               Últimos 6 meses en ARS
             </CardTitle>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="min-w-0">
             {chartData.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-14 text-center">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white">
@@ -860,7 +714,9 @@ export default async function DashboardPage() {
                 </p>
               </div>
             ) : (
-              <ExpensesChart data={chartData} currency="ARS" />
+              <div className="h-80 min-w-0">
+                <ExpensesChart data={chartData} currency="ARS" />
+              </div>
             )}
           </CardContent>
         </Card>

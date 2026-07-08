@@ -1,10 +1,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecurringForm } from "@/components/dashboard/recurring-form";
 import { DeleteRecurring } from "@/components/dashboard/delete-recurring";
 import { ToggleRecurring } from "@/components/dashboard/toggle-recurring";
-import { GenerateRecurringButton } from "@/components/dashboard/generate-recurring-button";
+import { RegisterRecurringButton } from "@/components/dashboard/register-recurring-button";
 import { getCurrencySymbol, type Currency } from "@/lib/finance";
 
 function getCurrentMonthLabel() {
@@ -96,23 +97,24 @@ async function getRecurringData(userId: string) {
 export default async function RecurringPage() {
   const session = await auth();
 
+  if (!session?.user?.email) {
+    redirect("/login");
+  }
+
   const user = await prisma.user.findUnique({
     where: {
-      email: session!.user!.email!,
+      email: session.user.email,
     },
     select: {
       id: true,
     },
   });
 
-  const userId = user!.id;
+  if (!user) {
+    redirect("/login");
+  }
 
-  const response = await fetch("http://localhost:3000/api/exchange-rate", {
-    cache: "no-store",
-  });
-
-  const { rate } = await response.json();
-
+  const userId = user.id;
   const data = await getRecurringData(userId);
   const monthLabel = getCurrentMonthLabel();
 
@@ -122,22 +124,12 @@ export default async function RecurringPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Recurrentes</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Creá plantillas para gastos e ingresos que se repiten todos los
-            meses en ARS o USD
+            Creá plantillas para gastos e ingresos frecuentes y registralos
+            individualmente cuando ocurran
           </p>
         </div>
 
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <GenerateRecurringButton userId={userId} monthLabel={monthLabel} />
-
-            <RecurringForm userId={userId} categories={data.categories} />
-          </div>
-
-          <div className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500 shadow-sm">
-            USD · $ {rate.toLocaleString("es-AR")}
-          </div>
-        </div>
+        <RecurringForm userId={userId} categories={data.categories} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -245,7 +237,7 @@ export default async function RecurringPage() {
             </div>
 
             <div>
-              <p className="mb-1 text-xs text-gray-400">Mes a generar</p>
+              <p className="mb-1 text-xs text-gray-400">Mes actual</p>
               <p className="text-sm font-semibold text-gray-900">
                 {monthLabel}
               </p>
@@ -273,8 +265,8 @@ export default async function RecurringPage() {
               </h3>
 
               <p className="mt-2 max-w-sm text-sm text-gray-500">
-                Agregá gastos fijos como alquiler, internet, gimnasio o
-                suscripciones para generarlos cada mes con un clic.
+                Agregá gastos frecuentes como alquiler, internet, gimnasio,
+                peluquería o suscripciones y registralos cuando ocurran.
               </p>
             </div>
           ) : (
@@ -315,8 +307,8 @@ export default async function RecurringPage() {
                           </div>
 
                           <p className="mt-1 text-xs text-gray-400">
-                            {recurring.category?.name || "Sin categoría"} · Día{" "}
-                            {recurring.dayOfMonth} de cada mes
+                            {recurring.category?.name || "Sin categoría"} · Día
+                            sugerido {recurring.dayOfMonth}
                           </p>
                         </div>
                       </div>
@@ -333,20 +325,25 @@ export default async function RecurringPage() {
                       </p>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                    <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-xs text-gray-400">
                         {recurring.transactions.length > 0
-                          ? `Último generado: ${new Date(
+                          ? `Último registrado: ${new Date(
                               recurring.transactions[0].date
                             ).toLocaleDateString("es-AR", {
                               day: "numeric",
                               month: "short",
                               year: "numeric",
                             })}`
-                          : "Aún no generado"}
+                          : "Aún no registrado"}
                       </span>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <RegisterRecurringButton
+                          recurringId={recurring.id}
+                          disabled={!recurring.isActive}
+                        />
+
                         <ToggleRecurring
                           id={recurring.id}
                           userId={userId}

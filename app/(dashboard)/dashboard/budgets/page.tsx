@@ -151,12 +151,6 @@ export default async function BudgetsPage() {
     },
   });
 
-  const response = await fetch("http://localhost:3000/api/exchange-rate", {
-    cache: "no-store",
-  });
-
-  const { rate } = await response.json();
-
   const data = await getBudgetData(user!.id);
 
   const monthLabel = new Date(data.year, data.month - 1).toLocaleDateString(
@@ -187,10 +181,6 @@ export default async function BudgetsPage() {
             month={data.month}
             year={data.year}
           />
-
-          <div className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500 shadow-sm">
-            USD · $ {rate.toLocaleString("es-AR")}
-          </div>
         </div>
       </div>
 

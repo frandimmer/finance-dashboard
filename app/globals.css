@@ -121,10 +121,23 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
+}
+
+.landing-google-button,
+.landing-google-button *,
+.landing-google-button::before,
+.landing-google-button::after,
+.landing-google-button *::before,
+.landing-google-button *::after {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
 }

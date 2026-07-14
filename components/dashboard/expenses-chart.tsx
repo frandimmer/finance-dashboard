@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   ResponsiveContainer,
@@ -8,19 +8,19 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-} from "recharts"
+} from "recharts";
 
 type Props = {
   data: {
-    month: string
-    income: number
-    expenses: number
-  }[]
-  currency: "ARS" | "USD"
-}
+    month: string;
+    income: number;
+    expenses: number;
+  }[];
+  currency: "ARS" | "USD";
+};
 
 export function ExpensesChart({ data, currency }: Props) {
-  const symbol = currency === "USD" ? "US$" : "$"
+  const symbol = currency === "USD" ? "US$" : "$";
 
   return (
     <div className="w-full h-[340px]">
@@ -30,15 +30,8 @@ export function ExpensesChart({ data, currency }: Props) {
           margin={{ top: 10, right: 20, left: 60, bottom: 10 }}
           barGap={6}
         >
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.6} />
 
-          {/* GRID MÁS SUAVE */}
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="#e5e7eb"
-            opacity={0.6}
-          />
-
-          {/* X AXIS */}
           <XAxis
             dataKey="month"
             tick={{ fontSize: 12, fill: "#6b7280" }}
@@ -46,7 +39,6 @@ export function ExpensesChart({ data, currency }: Props) {
             tickLine={false}
           />
 
-          {/* Y AXIS (FIX ESPACIO + FORMATO MONEDA) */}
           <YAxis
             width={90}
             tick={{ fontSize: 12, fill: "#6b7280" }}
@@ -59,19 +51,21 @@ export function ExpensesChart({ data, currency }: Props) {
             }
           />
 
-          {/* TOOLTIP PRO */}
           <Tooltip
             cursor={{ fill: "rgba(0,0,0,0.04)" }}
-            formatter={(value: number) => [
-              `${symbol} ${value.toLocaleString("es-AR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`,
-            ]}
-            labelStyle={{ color: "#374151" }}
+            formatter={(value) => {
+              const numericValue =
+                typeof value === "number" ? value : Number(value ?? 0);
+
+              return [
+                `${symbol} ${numericValue.toLocaleString("es-AR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`,
+              ];
+            }}
           />
 
-          {/* BARRAS MÁS SOFT */}
           <Bar
             dataKey="income"
             fill="#10b981"
@@ -88,5 +82,5 @@ export function ExpensesChart({ data, currency }: Props) {
         </BarChart>
       </ResponsiveContainer>
     </div>
-  )
+  );
 }
